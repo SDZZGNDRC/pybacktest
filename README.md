@@ -208,12 +208,12 @@ The order book structure of the specific pair.
 
 **properties**:
 
-* `asks: pd.Series[BookLevel]`: The asks of the order book.
-* `bids: pd.Series[BookLevel]`: The bids of the order book.
+* `asks: Asks`: The asks of the order book.
+* `bids: Bids`: The bids of the order book.
 
 **methods**:
 
-* `__init__(self, pair: str, simTime: SimTime, path: str) -> None`: Initialize the order books.
+* `__init__(self, pair: str, simTime: SimTime, path: str, max_interval: int = 3000) -> None`: Initialize the order books.
 * `update() -> None`: Update the order books to current simTime. To enhance the performance, the order books will be `updated only when necessary` instead of updating every time.
 * `__getitem__(self, side: str) -> pd.Series[BookLevel]`: Return the asks or bids of the order book.
 

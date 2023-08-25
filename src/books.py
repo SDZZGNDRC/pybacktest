@@ -1,0 +1,204 @@
+
+import bisect
+import glob
+import os
+from typing import List, Tuple
+
+import pandas as pd
+from src.simTime import SimTime
+
+
+class BookLevel:
+    def __init__(self, price: float, amount: float, count: int):
+        self._validate_price(price)
+        self._validate_amount(amount)
+        self._validate_count(count)
+        
+        self.price = price
+        self.amount = amount
+        self.count = count
+    
+    
+    def _validate_price(self, price):
+        if not isinstance(price, float):
+            raise TypeError("Price must be a float.")
+        if price <= 0:
+            raise ValueError("Price must be greater than zero.")
+    
+    
+    def _validate_amount(self, amount):
+        if not isinstance(amount, float):
+            raise TypeError("Amount must be a float.")
+        if amount < 0:
+            raise ValueError("Amount must be greater than or equal to zero.")
+    
+    
+    def _validate_count(self, count):
+        if not isinstance(count, int):
+            raise TypeError("Count must be an integer.")
+        if count < 0:
+            raise ValueError("Count must be greater than or equal to zero.")
+    
+    
+    def __eq__(self, __value) -> bool:
+        if isinstance(__value, BookLevel):
+            return self.price == __value.price
+        elif isinstance(__value, float):
+            return self.price == __value
+        else:
+            raise TypeError("Unsupported type for comparison.")
+    
+    
+    def __lt__(self, __value) -> bool:
+        if isinstance(__value, BookLevel):
+            return self.price < __value.price
+        elif isinstance(__value, float):
+            return self.price < __value
+        else:
+            raise TypeError("Unsupported type for comparison.")
+    
+    
+    def __gt__(self, __value) -> bool:
+        if isinstance(__value, BookLevel):
+            return self.price > __value.price
+        elif isinstance(__value, float):
+            return self.price > __value
+        else:
+            raise TypeError("Unsupported type for comparison.")
+
+
+class Asks:
+    def __init__(self) -> None:
+        self._asks: List[BookLevel] = []
+    
+    
+    def set(self, price: float, amount: float, count: int) -> None:
+        new_level = BookLevel(price, amount, count)
+        if amount == 0: # remove the level
+            if new_level in self._asks:
+                self._asks.remove(new_level)
+        elif new_level in self._asks: # update the level
+            self._asks[self._asks.index(new_level)] = new_level
+        else: # add the level
+            # Insert the level in the correct position (ascending order)
+            bisect.insort(self._asks, new_level)
+
+
+    def __getitem__(self, index: int) -> BookLevel:
+        return self._asks[index]
+    
+    
+    def __len__(self) -> int:
+        return len(self._asks)
+
+
+class Bids:
+    def __init__(self) -> None:
+        self._bids: List[BookLevel] = []
+    
+    
+    def set(self, price: float, amount: float, count: int) -> None:
+        new_level = BookLevel(price, amount, count)
+        if amount == 0: # remove the level
+            if new_level in self._bids:
+                self._bids.remove(new_level)
+        elif new_level in self._bids: # update the level
+            self._bids[self._bids.index(new_level)] = new_level
+        else: # add the level
+            # Insert the level in the correct position (descending order)
+            self._bids.reverse()
+            bisect.insort_left(self._bids, new_level)
+            self._bids.reverse()
+
+
+    def __getitem__(self, index: int) -> BookLevel:
+        return self._bids[index]
+    
+    
+    def __len__(self) -> int:
+        return len(self._bids)
+
+
+class Book:
+    def __init__(self, pair: str, simTime: SimTime, path: str, max_interval: int = 2000) -> None:
+        self.pair = pair
+        self.simTime = simTime
+        self.path = path
+        self.max_interval = max_interval
+        
+        # initialize the index
+        self.index_files: List[str] = glob.glob(os.path.join(self.path, 'part-*-*-*.parquet'))
+        self.index_timePeriods: List[Tuple[int, int]] = []
+        for file in self.index_files:
+            start, end = os.path.splitext(os.path.basename(file))[0].split('-')[2:]
+            self.index_timePeriods.append((int(start), int(end)))
+        
+        self.current_index = 0
+        self._update_index()
+        self.chunked_data = pd.read_parquet(self.index_files[self.current_index])
+
+        self.current_ts = -1
+        self.chunked_index = 0
+        self.asks: Asks = Asks()
+        self.bids: Bids = Bids()
+
+
+    def _update_index(self) -> bool:
+        for i, (start, end) in enumerate(self.index_timePeriods):
+            if self.simTime >= start and self.simTime <= end:
+                if self.current_index != i:
+                    self.current_index = i
+                    return True
+        
+        return False
+
+
+    def update(self):
+        if self.current_ts == self.simTime:
+            return
+        
+        if self._update_index(): # update the chunked data; reset the book
+            self.chunked_data = pd.read_parquet(self.index_files[self.current_index])
+            
+            # ensure the `action` field is correct in the first row
+            if self.chunked_data.iloc[0]['action'] != 'snapshot':
+                raise Exception('The first row of the chunked data must be a snapshot.')
+            
+            initial_ts: int = self.chunked_data.iloc[0]['timestamp']
+            
+            # load snapshot; iterate through each row and update the book
+            self.chunked_index = 0
+            for _, row in self.chunked_data.iterrows():
+                if row['action'] != 'snapshot' or row['timestamp'] != initial_ts: # finish loading the snapshot
+                    break
+                
+                self.__set(row)
+                
+                self.chunked_index += 1
+        
+            self.current_ts = initial_ts
+        
+        if self.simTime < self.current_ts:
+            raise Exception('Current chunked data is ahead of the simulation time.')
+        
+        # iterate through each row and update the book until the simulation time is reached
+        while self.simTime > self.current_ts:
+            row = self.chunked_data.iloc[self.chunked_index]
+            if row['timestamp'] > self.simTime:
+                break
+            if abs(row['timestamp'] - self.current_ts) > self.max_interval:
+                raise Exception('The time interval between two consecutive rows exceeds the maximum interval.')
+            
+            self.__set(row)
+            if row['timestamp'] != self.current_ts:
+                self.current_ts = row['timestamp']
+            self.chunked_index += 1
+
+
+    def __set(self, row: pd.Series) -> None:
+        if row['side'] == 'ask':
+            self.asks.set(row['price'], row['amount'], row['numOrders'])
+        elif row['side'] == 'bid':
+            self.bids.set(row['price'], row['amount'], row['numOrders'])
+        else:
+            raise Exception(f'Invalid side: {row["side"]}')

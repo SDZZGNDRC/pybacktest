@@ -15,8 +15,8 @@ class BookLevel:
         self._validate_count(count)
         
         self.price = price
-        self.amount = amount
-        self.count = count
+        self.amount = float(amount)
+        self.count = int(count)
     
     
     def _validate_price(self, price):
@@ -27,15 +27,13 @@ class BookLevel:
     
     
     def _validate_amount(self, amount):
-        if not isinstance(amount, float):
-            raise TypeError("Amount must be a float.")
+        if not isinstance(amount, float) and not isinstance(amount, int):
+            raise TypeError("Amount must be a float or an integer.")
         if amount < 0:
             raise ValueError("Amount must be greater than or equal to zero.")
     
     
     def _validate_count(self, count):
-        if not isinstance(count, int):
-            raise TypeError("Count must be an integer.")
         if count < 0:
             raise ValueError("Count must be greater than or equal to zero.")
     
@@ -66,6 +64,9 @@ class BookLevel:
         else:
             raise TypeError("Unsupported type for comparison.")
 
+    def true_eq(self, other) -> bool:
+        return self.price == other.price and self.amount == other.amount and self.count == other.count
+
 
 class Asks:
     def __init__(self) -> None:
@@ -76,6 +77,7 @@ class Asks:
         new_level = BookLevel(price, amount, count)
         if amount == 0: # remove the level
             if new_level in self._asks:
+                print(f'remove: {new_level.price}')
                 self._asks.remove(new_level)
         elif new_level in self._asks: # update the level
             self._asks[self._asks.index(new_level)] = new_level
@@ -90,6 +92,15 @@ class Asks:
     
     def __len__(self) -> int:
         return len(self._asks)
+    
+    def __eq__(self, other) -> bool:
+        if len(self._asks) != len(other):
+            return False
+        for i, level in enumerate(self._asks):
+            if not level.true_eq(other[i]):
+                return False
+        
+        return True
 
 
 class Bids:
@@ -117,6 +128,14 @@ class Bids:
     
     def __len__(self) -> int:
         return len(self._bids)
+    
+    
+    def __eq__(self, other) -> bool:
+        for i, level in enumerate(self._bids):
+            if not level.true_eq(other[i]):
+                return False
+        
+        return True
 
 
 class Book:
@@ -133,14 +152,16 @@ class Book:
             start, end = os.path.splitext(os.path.basename(file))[0].split('-')[2:]
             self.index_timePeriods.append((int(start), int(end)))
         
-        self.current_index = 0
-        self._update_index()
-        self.chunked_data = pd.read_parquet(self.index_files[self.current_index])
+        self.current_index = -1
+        # self._update_index()
+        # self.chunked_data = pd.read_parquet(self.index_files[self.current_index])
 
         self.current_ts = -1
         self.chunked_index = 0
-        self.asks: Asks = Asks()
-        self.bids: Bids = Bids()
+        self._asks: Asks = Asks()
+        self._bids: Bids = Bids()
+        
+        self.update()
 
 
     def _update_index(self) -> bool:
@@ -182,23 +203,43 @@ class Book:
             raise Exception('Current chunked data is ahead of the simulation time.')
         
         # iterate through each row and update the book until the simulation time is reached
-        while self.simTime > self.current_ts:
+        print(f'simTime: {self.simTime}, current_ts: {self.current_ts}')
+        while self.simTime >= self.current_ts:
+            if self.chunked_index >= len(self.chunked_data):
+                break
             row = self.chunked_data.iloc[self.chunked_index]
             if row['timestamp'] > self.simTime:
                 break
-            if abs(row['timestamp'] - self.current_ts) > self.max_interval:
-                raise Exception('The time interval between two consecutive rows exceeds the maximum interval.')
+
+            print(f'update: {row["timestamp"]}')
+            if abs(row['timestamp'] - self.current_ts) > self.max_interval and self.current_ts != -1:
+                raise Exception(f'The time interval between two consecutive rows {(row["timestamp"], self.current_ts)} exceeds the maximum interval.')
             
             self.__set(row)
             if row['timestamp'] != self.current_ts:
                 self.current_ts = row['timestamp']
             self.chunked_index += 1
+        
+        self.current_ts = int(self.simTime)
 
 
     def __set(self, row: pd.Series) -> None:
         if row['side'] == 'ask':
-            self.asks.set(row['price'], row['amount'], row['numOrders'])
+            self._asks.set(row['price'], row['size'], row['numOrders'])
         elif row['side'] == 'bid':
-            self.bids.set(row['price'], row['amount'], row['numOrders'])
+            self._bids.set(row['price'], row['size'], row['numOrders'])
         else:
             raise Exception(f'Invalid side: {row["side"]}')
+        
+    
+    @property
+    def asks(self) -> Asks:
+        self.update()
+        
+        return self._asks
+    
+    @property
+    def bids(self) -> Bids:
+        self.update()
+        
+        return self._bids

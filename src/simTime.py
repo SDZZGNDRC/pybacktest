@@ -27,33 +27,13 @@ class SimTime:
         return float(self.__ts)
     
     def __gt__(self, other) -> bool:
-        if isinstance(other, int):
-            return self.__ts > other
-        elif isinstance(other, SimTime):
-            return self.__ts > other.__ts
-        else:
-            raise TypeError("Cannot compare SimTime with type " + str(type(other)))
+        return self.__ts > int(other)
     
     def __ge__(self, other) -> bool:
-        if isinstance(other, int):
-            return self.__ts >= other
-        elif isinstance(other, SimTime):
-            return self.__ts >= other.__ts
-        else:
-            raise TypeError("Cannot compare SimTime with type " + str(type(other)))
+        return self.__ts >= int(other)
     
     def __lt__(self, other) -> bool:
-        if isinstance(other, int):
-            return self.__ts < other
-        elif isinstance(other, SimTime):
-            return self.__ts < other.__ts
-        else:
-            raise TypeError("Cannot compare SimTime with type " + str(type(other)))
+        return self.__ts < int(other)
     
     def __le__(self, other) -> bool:
-        if isinstance(other, int):
-            return self.__ts <= other
-        elif isinstance(other, SimTime):
-            return self.__ts <= other.__ts
-        else:
-            raise TypeError("Cannot compare SimTime with type " + str(type(other)))
+        return self.__ts <= int(other)

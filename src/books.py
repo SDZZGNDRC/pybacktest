@@ -2,7 +2,7 @@
 import bisect
 import glob
 import os
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import pandas as pd
 from src.simTime import SimTime
@@ -101,6 +101,9 @@ class Asks:
                 return False
         
         return True
+    
+    def __iter__(self):
+        return iter(self._asks)
 
 
 class Bids:
@@ -137,6 +140,9 @@ class Bids:
         
         return True
 
+
+    def __iter__(self):
+        return iter(self._bids)
 
 class Book:
     def __init__(self, pair: str, simTime: SimTime, path: str, max_interval: int = 2000) -> None:
@@ -243,3 +249,35 @@ class Book:
         self.update()
         
         return self._bids
+
+
+    def __getitem__(self, side: str) -> Union[Asks, Bids]:
+        if side == 'ask':
+            return self.asks
+        elif side == 'bid':
+            return self.bids
+        else:
+            raise Exception(f'Invalid side: {side}')
+
+
+class Books:
+    def __init__(self, path: str, simTime: SimTime) -> None:
+        self.path = path
+        self.simTime = simTime
+        
+        self._books: Dict[str, Book] = {}
+    
+    
+    def __len__(self) -> int:
+        return len(self._books)
+    
+    
+    def __getitem__(self, pair: str) -> Book:
+        if not isinstance(pair, str):
+            raise TypeError("Pair must be a string.")
+        if pair not in self._books:
+            book_path = os.path.join(self.path, pair)
+            self._books[pair] = Book(pair, self.simTime, book_path)
+        
+        return self._books[pair]
+    

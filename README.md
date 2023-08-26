@@ -98,17 +98,41 @@ idc['AveragePrice']['BTC-USDT']['1m'] # The average price of BTC-USDT in the las
   * 买卖双方的订单变化频率
 * Indicators about which price-level most trading activities have taken place.
 
-### Balance(Info)
+### Balance
 
 Current balance of the account.  
-As a wrapper of all balances in different exchanges.  
 
 ```python
 # Example of usage.
-balance = Balance(exchanges: List[Exchange])
+balance = Balance()
 balance['USDT'] # The amount of USDT
 balance.in_total(quote_Ccy='USDT') # The total amount of USDT
 ```
+
+### Contracts
+
+All the contracts that the strategy is trading on.
+
+```python
+# Example of usage.
+contracts = Contracts()
+contracts['BTC-USDT'] # The contract of BTC-USDT
+contracts.in_total() # The total value of all the contracts
+```
+
+### Contract
+
+The contract that the strategy is trading on.
+
+**properties**:
+
+* `pair: str`: The pair of the contract.
+* `start: int`: The start time of the contract.
+* `end: int`: The end time of the contract.
+* `direction: str`: The direction of the contract, `Long` or `Short`.
+* `leverage: float`: The leverage of the contract.
+* `margin: float`: The margin of the contract.
+* `num: int`: The number of the contract.
 
 ### Strategy
 
@@ -182,7 +206,6 @@ The data are originally stored in multiple parquet files.
 **methods**:
 
 * `__init__(self, simTime: SimTime, path: str) -> None`: Initialize the market data.
-* `update() -> None`: Update the market data to current simTime.
 
 **Usage**:
 
@@ -215,7 +238,7 @@ The order book structure of the specific pair.
 
 * `__init__(self, pair: str, simTime: SimTime, path: str, max_interval: int = 3000) -> None`: Initialize the order books.
 * `update() -> None`: Update the order books to current simTime. To enhance the performance, the order books will be `updated only when necessary` instead of updating every time.
-* `__getitem__(self, side: str) -> pd.Series[BookLevel]`: Return the asks or bids of the order book.
+* `__getitem__(self, side: str) -> Union[Asks, Bids]`: Return the asks or bids of the order book.
 
 **Usage**:
 

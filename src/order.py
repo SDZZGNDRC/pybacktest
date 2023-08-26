@@ -11,6 +11,7 @@ class orderStatus:
     OPEN = 'OPEN'
     CLOSED = 'CLOSED'
     CANCELED = 'CANCELED'
+    INSUFFICIENT = 'INSUFFICIENT'
 
 class orderSide:
     BUY = 'BUY'
@@ -60,6 +61,20 @@ class Order:
         # The amount that has not been executed
         return self.amount - sum([d.amount for d in self.detail])
     
+    @property
+    def base_ccy(self) -> str:
+        s = self.pair.split('-')
+        if len(s) != 2:
+            raise Exception('Invalid pair')
+        return s[0]
+    
+    @property
+    def quote_ccy(self) -> str:
+        s = self.pair.split('-')
+        if len(s) != 2:
+            raise Exception('Invalid pair')
+        return s[1]
+    
     def exe(self, price: float, amount: float, fee: float) -> None:
         if self.status != orderStatus.OPEN:
             raise Exception('Order is not open')
@@ -76,3 +91,5 @@ class Order:
         if self.leftAmount == 0: # TODO: Consider the precision
             self.status = orderStatus.CLOSED
         
+    def insufficient(self) -> None:
+        self.status = orderStatus.INSUFFICIENT

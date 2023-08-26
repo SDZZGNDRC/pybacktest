@@ -214,6 +214,14 @@ class TestBook:
         
         assert book.bids == correct_bids
         
+        clear_book(path)
+    
+    
+    def test_update(self):
+        path = setup_book()
+        st = SimTime(1687420840901, 1687420841201)
+        book = Book('1INCH-USDT-SWAP', st, path)
+        
         st.set(1687420841101)
         correct_asks = Asks()
         correct_asks.set(100.0, 69.0, 5)
@@ -269,5 +277,7 @@ class TestBook:
         
         assert book.bids == correct_bids
         
+        clear_book(path)
+
 if __name__ == "__main__":
     pytest.main()

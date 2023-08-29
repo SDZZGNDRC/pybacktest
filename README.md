@@ -15,9 +15,13 @@ A backtest framework written in python, used for testing trading strategies.
 
 The world is consisted of environments and strategies.
 
-methods:
+**properties**:
 
-* `start(backtest: Backtest) -> History`: Start the backtest.
+* `events: List[Event]`: The events that will be executed.
+
+**methods**:
+
+* `run(backtest: Backtest) -> History`: Run the backtest.
   * Initialize the Environment
 * `eval()`: Evaluate the environments by calling registered functions.
 
@@ -129,10 +133,12 @@ The contract that the strategy is trading on.
 * `pair: str`: The pair of the contract.
 * `start: int`: The start time of the contract.
 * `end: int`: The end time of the contract.
+* `entry_ts: int`: The timestamp of the entry time.
 * `direction: str`: The direction of the contract, `Long` or `Short`.
-* `leverage: float`: The leverage of the contract.
+* `leverage: int`: The leverage of the contract.
 * `margin: float`: The margin of the contract.
-* `num: int`: The number of the contract.
+* `exit_ts: int`: The timestamp of the exit time.
+* `status: str`: The status of the contract, `Pending`, `Opened` or `Closed`.
 
 ### Strategy
 
@@ -140,7 +146,7 @@ We should consider to separate the strategy into `signal generator` and `risk ma
 
 methods:
 
-* `eval(env: Environment) -> List[Action]`: Evaluate the environment and return the action that the strategy will take.
+* `eval(env: Environment) -> List[Event]`: Evaluate the environment and return the action that the strategy will take.
 
 #### Metadata
 
@@ -159,11 +165,11 @@ Tha alpha generate the signals which indicate the direction of the market.
 
 The risk management will decide the amount of the orders.
 
-### Action
+### Event
 
-Represent the action that the strategy will take.
+Represent the event that the strategy will take.
 
-### EmitOrder(Action)
+### CreateEvent(Event)
 
 Create an order.
 
@@ -172,7 +178,7 @@ properties:
 * `exchange: str`: The exchange that the order will be placed on.
 * `order: Order`: The order that will be created.
 
-### CancelOrder(Action)
+### CancelOrder(Event)
 
 Cancel an order.
 

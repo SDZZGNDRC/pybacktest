@@ -30,6 +30,12 @@ class Balance:
     def __contains__(self, ccy: str) -> bool:
         return ccy in self._balance
 
+    def __hash__(self) -> int:
+        return hash(tuple(self._balance.items()))
+
+    def as_dict(self) -> dict:
+        return self._balance.copy()
+
 
 class Exchange:
     def __init__(self, data_path: str, simTime: SimTime) -> None:
@@ -52,6 +58,12 @@ class Exchange:
             if order.status == 'OPEN':
                 self.__execute(order)
     
+    
+    def add_order(self, order: Order) -> None:
+        if order.status != 'OPEN':
+            raise Exception(f'Order status must be OPEN, not {order.status}')
+        
+        self.orders.append(order)
     
     def __execute(self, order: Order):
         if order.orderType == 'LIMIT':
@@ -100,3 +112,12 @@ class Exchange:
         else:
             raise Exception(f'Unsupported order side: {order.side}')
         
+
+    def __hash__(self) -> int:
+        return hash((tuple(self.orders), self.balance))
+    
+    def as_dict(self) -> dict:
+        return {
+            'orders': [o.as_dict() for o in self.orders],
+            'balance': self.balance.as_dict(),
+        }

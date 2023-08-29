@@ -26,6 +26,19 @@ class TransDetail:
         self.price = price
         self.amount = amount
         self.fee = fee
+    
+    
+    def as_dict(self) -> dict:
+        return {
+            'ts': self.ts,
+            'price': self.price,
+            'amount': self.amount,
+            'fee': self.fee,
+        }
+    
+    
+    def __hash__(self) -> int:
+        return hash((self.ts, self.price, self.amount, self.fee))
 
 class Order:
     def __init__(self,
@@ -93,3 +106,20 @@ class Order:
         
     def insufficient(self) -> None:
         self.status = orderStatus.INSUFFICIENT
+
+    def __hash__(self) -> int:
+        return hash((self.status, self.detail))
+
+    def as_dict(self) -> dict:
+        return {
+            'uuid': str(self.uuid),
+            'pair': self.pair,
+            'orderType': self.orderType,
+            'side': self.side,
+            'ts': self.ts,
+            'simTime': int(self.simTime),
+            'price': self.price,
+            'amount': self.amount,
+            'status': self.status,
+            'detail': [d.as_dict() for d in self.detail],
+        }

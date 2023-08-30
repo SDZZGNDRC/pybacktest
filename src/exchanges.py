@@ -109,8 +109,10 @@ class Exchange:
                     break
                 
                 self.balance[order.base_ccy] -= exec_amount
-                get_amount = exec_amount / bl.price
+                get_amount = exec_amount * bl.price
+                print(f'get_amount: {get_amount}')
                 self.balance[order.quote_ccy] += get_amount * (1 - fee_rate)
+                print(f'balance: {self.balance[order.quote_ccy]}')
                 order.exe(bl.price, exec_amount, get_amount * fee_rate)
         else:
             raise Exception(f'Unsupported order side: {order.side}')

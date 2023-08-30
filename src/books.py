@@ -47,6 +47,10 @@ class BookLevel:
             raise TypeError("Unsupported type for comparison.")
     
     
+    def __repr__(self) -> str:
+        return f'BookLevel(price={self.price}, amount={self.amount}, count={self.count})'
+    
+    
     def __lt__(self, __value) -> bool:
         if isinstance(__value, BookLevel):
             return self.price < __value.price

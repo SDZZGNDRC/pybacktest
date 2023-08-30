@@ -5,8 +5,10 @@ from src.order import Order
 from src.simTime import SimTime
 
 class Balance:
-    def __init__(self) -> None:
+    def __init__(self, initial_balance: Dict[str, float]) -> None:
         self._balance: Dict[str, float] = {}
+        for ccy, value in initial_balance.items():
+            self[ccy] = value
     
     
     def __getitem__(self, ccy: str) -> float:
@@ -38,10 +40,10 @@ class Balance:
 
 
 class Exchange:
-    def __init__(self, data_path: str, simTime: SimTime) -> None:
+    def __init__(self, data_path: str, simTime: SimTime, initial_balance: Dict[str, float] = {'USDT': 100}) -> None:
         self.marketData = MarketData(simTime, data_path)
         self.orders: List[Order] = []
-        self.balance: Balance = Balance()
+        self.balance: Balance = Balance(initial_balance)
         self.transaction_fee = {
             'MarketOrder': {
                 'MAKER': 0.0008,

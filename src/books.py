@@ -77,7 +77,6 @@ class Asks:
         new_level = BookLevel(price, amount, count)
         if amount == 0: # remove the level
             if new_level in self._asks:
-                print(f'remove: {new_level.price}')
                 self._asks.remove(new_level)
         elif new_level in self._asks: # update the level
             self._asks[self._asks.index(new_level)] = new_level
@@ -153,6 +152,8 @@ class Book:
         
         # initialize the index
         self.index_files: List[str] = glob.glob(os.path.join(self.path, 'part-*-*-*.parquet'))
+        if len(self.index_files) == 0:
+            raise Exception('No index files found.')
         self.index_timePeriods: List[Tuple[int, int]] = []
         for file in self.index_files:
             start, end = os.path.splitext(os.path.basename(file))[0].split('-')[2:]
@@ -209,7 +210,6 @@ class Book:
             raise Exception('Current chunked data is ahead of the simulation time.')
         
         # iterate through each row and update the book until the simulation time is reached
-        print(f'simTime: {self.simTime}, current_ts: {self.current_ts}')
         while self.simTime >= self.current_ts:
             if self.chunked_index >= len(self.chunked_data):
                 break
@@ -217,7 +217,6 @@ class Book:
             if row['timestamp'] > self.simTime:
                 break
 
-            print(f'update: {row["timestamp"]}')
             if abs(row['timestamp'] - self.current_ts) > self.max_interval and self.current_ts != -1:
                 raise Exception(f'The time interval between two consecutive rows {(row["timestamp"], self.current_ts)} exceeds the maximum interval.')
             
@@ -277,7 +276,7 @@ class Books:
             raise TypeError("Pair must be a string.")
         if pair not in self._books:
             book_path = os.path.join(self.path, pair)
-            self._books[pair] = Book(pair, self.simTime, book_path)
+            self._books[pair] = Book(pair, self.simTime, book_path, 5000)
         
         return self._books[pair]
     

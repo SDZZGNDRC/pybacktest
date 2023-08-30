@@ -1,7 +1,6 @@
 
 from typing import List
 
-from matplotlib.pyplot import hist
 from event import Event
 from src.environment import Environment
 from src.backtest import Backtest

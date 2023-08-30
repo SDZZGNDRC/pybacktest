@@ -17,4 +17,4 @@ class Strategy:
     
     
     def eval(self, env: Environment) -> List[Event]:
-        pass
+        raise NotImplementedError

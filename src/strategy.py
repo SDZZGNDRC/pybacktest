@@ -1,7 +1,7 @@
 from typing import List
 
-from environment import Environment
-from event import Event
+from src.environment import Environment
+from src.event import Event
 
 class Strategy:
     def __init__(self, 

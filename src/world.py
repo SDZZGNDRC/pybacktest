@@ -1,7 +1,7 @@
 
 from typing import List
 
-from event import Event
+from src.event import Event
 from src.environment import Environment
 from src.backtest import Backtest
 from src.history import History
@@ -24,8 +24,11 @@ class World:
         strategy = backtest.strategy
         eval_step = backtest.eval_step
         
-        while not backtest.stop_condition(self.env):
+        while True:
             history.snapshot(self.env)
+            
+            if backtest.stop_condition != None and backtest.stop_condition(self.env):
+                break
             
             if self.simTime >= backtest.end:
                 break

@@ -12,7 +12,7 @@ class Balance:
     
     
     def __getitem__(self, ccy: str) -> float:
-        if isinstance(ccy, str):
+        if not isinstance(ccy, str):
             raise TypeError("Currency must be a string.")
         
         if ccy not in self._balance:
@@ -21,7 +21,7 @@ class Balance:
     
     
     def __setitem__(self, ccy: str, value: float) -> None:
-        if isinstance(ccy, str):
+        if not isinstance(ccy, str):
             raise TypeError("Currency must be a string.")
         
         if value < 0:
@@ -40,7 +40,7 @@ class Balance:
 
 
 class Exchange:
-    def __init__(self, data_path: str, simTime: SimTime, initial_balance: Dict[str, float] = {'USDT': 100}) -> None:
+    def __init__(self, data_path: str, simTime: SimTime, initial_balance: Dict[str, float] = {'USDT': 100, 'USDC': 100}) -> None:
         self.marketData = MarketData(simTime, data_path)
         self.orders: List[Order] = []
         self.balance: Balance = Balance(initial_balance)
@@ -84,7 +84,7 @@ class Exchange:
         fee_rate = self.transaction_fee['MarketOrder']['TAKER']
         
         if order.side == 'BUY':
-            for bl in self.marketData['books'][order.pair]['asks']:
+            for bl in self.marketData['books'][order.pair]['ask']:
                 if order.leftAmount == 0:
                     break
                 
@@ -92,25 +92,26 @@ class Exchange:
                 cost = bl.price * exec_amount
                 if cost > self.balance[order.quote_ccy]:
                     order.insufficient()
+                    print(f'[{self.marketData.simTime}] Insufficient balance: {self.balance[order.quote_ccy]} < {cost}')
                     break
                 
                 self.balance[order.quote_ccy] -= cost
                 self.balance[order.base_ccy] += exec_amount * (1 - fee_rate)
                 order.exe(bl.price, exec_amount, exec_amount * fee_rate)
         elif order.side == 'SELL':
-            for bl in self.marketData['books'][order.pair]['bids']:
+            for bl in self.marketData['books'][order.pair]['bid']:
                 if order.leftAmount == 0:
                     break
-                quote_amount = bl.price * bl.amount
-                exec_amount = min(order.leftAmount, quote_amount)
-                cost = exec_amount / bl.price
-                if cost > self.balance[order.base_ccy]:
+                exec_amount = min(order.leftAmount, bl.amount)
+                if exec_amount > self.balance[order.base_ccy]:
                     order.insufficient()
+                    print(f'[{self.marketData.simTime}] Insufficient balance: {self.balance[order.base_ccy]} < {exec_amount}')
                     break
                 
-                self.balance[order.base_ccy] -= cost
-                self.balance[order.quote_ccy] += exec_amount * (1 - fee_rate)
-                order.exe(bl.price, exec_amount, exec_amount * fee_rate)
+                self.balance[order.base_ccy] -= exec_amount
+                get_amount = exec_amount / bl.price
+                self.balance[order.quote_ccy] += get_amount * (1 - fee_rate)
+                order.exe(bl.price, exec_amount, get_amount * fee_rate)
         else:
             raise Exception(f'Unsupported order side: {order.side}')
         

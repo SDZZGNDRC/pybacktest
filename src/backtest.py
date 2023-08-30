@@ -1,5 +1,5 @@
-from typing import Callable, List
-from strategy import Strategy
+from typing import Callable, List, Optional
+from src.strategy import Strategy
 from src.environment import Environment
 
 class Backtest:
@@ -7,10 +7,10 @@ class Backtest:
                 strategy: Strategy,
                 start: int,
                 end: int,
-                stop_condition: Callable[[Environment], bool],
                 hist_level: str,
                 exchanges: List[str],
                 eval_step: int = 1000,
+                stop_condition: Optional[Callable[[Environment], bool]] = None,
                 ) -> None:
         self.strategy = strategy
 

@@ -22,6 +22,7 @@ class SimTime:
         if not isinstance(new_ts, int):
             raise ValueError("Timestamp must be an integer.")
         if new_ts < self.__start or new_ts > self.__end:
+            print(new_ts, self.__start, self.__end)
             raise ValueError("Timestamp must be within the simulation start and end times.")
         if new_ts <= self.__ts:
             raise ValueError("Timestamp must be greater than the current timestamp.")
@@ -47,3 +48,6 @@ class SimTime:
     
     def __le__(self, other) -> bool:
         return self.__ts <= int(other)
+
+    def __eq__(self, other) -> bool:
+        return self.__ts == int(other)

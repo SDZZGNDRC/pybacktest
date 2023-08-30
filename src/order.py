@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 import uuid
 
 from simTime import SimTime
@@ -43,8 +43,8 @@ class TransDetail:
 class Order:
     def __init__(self,
                 pair: str, orderType: str, 
-                side: str, ts: SimTime, 
-                price: float, amount: float, 
+                side: str, ts: Union[SimTime, int], 
+                amount: float, price: float = 0, 
                 ) -> None:
         self.uuid = uuid.uuid4()
         self.pair = pair
@@ -108,7 +108,7 @@ class Order:
         self.status = orderStatus.INSUFFICIENT
 
     def __hash__(self) -> int:
-        return hash((self.status, self.detail))
+        return hash((self.status, tuple(self.detail)))
 
     def as_dict(self) -> dict:
         return {

@@ -9,16 +9,17 @@ from src.simTime import SimTime
 
 
 class World:
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, max_interval: int = 2000) -> None:
         self.events: List[Event] = []
         self.path = path
         self.simTime = SimTime(0, 1)
-        self.env = Environment(path, self.simTime)
+        self.env = None
+        self.max_interval = max_interval
 
 
     def run(self, backtest: Backtest) -> History:
         self.simTime = SimTime(backtest.start, backtest.end)
-        self.env = Environment(self.path, self.simTime)
+        self.env = Environment(self.path, self.simTime, self.max_interval)
         
         history = History(backtest.hist_level)
         strategy = backtest.strategy

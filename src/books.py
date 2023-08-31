@@ -264,9 +264,10 @@ class Book:
 
 
 class Books:
-    def __init__(self, path: str, simTime: SimTime) -> None:
+    def __init__(self, path: str, simTime: SimTime, max_interval: int = 2000) -> None:
         self.path = path
         self.simTime = simTime
+        self.max_interval = max_interval
         
         self._books: Dict[str, Book] = {}
     
@@ -280,7 +281,7 @@ class Books:
             raise TypeError("Pair must be a string.")
         if pair not in self._books:
             book_path = os.path.join(self.path, pair)
-            self._books[pair] = Book(pair, self.simTime, book_path, 5000)
+            self._books[pair] = Book(pair, self.simTime, book_path, self.max_interval)
         
         return self._books[pair]
     

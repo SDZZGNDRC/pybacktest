@@ -40,8 +40,8 @@ class Balance:
 
 
 class Exchange:
-    def __init__(self, data_path: str, simTime: SimTime, initial_balance: Dict[str, float] = {'USDT': 100, 'USDC': 100}) -> None:
-        self.marketData = MarketData(simTime, data_path)
+    def __init__(self, data_path: str, simTime: SimTime, initial_balance: Dict[str, float] = {'USDT': 100, 'USDC': 100}, max_interval: int = 2000) -> None:
+        self.marketData = MarketData(simTime, data_path, max_interval)
         self.orders: List[Order] = []
         self.balance: Balance = Balance(initial_balance)
         self.transaction_fee = {
@@ -110,9 +110,7 @@ class Exchange:
                 
                 self.balance[order.base_ccy] -= exec_amount
                 get_amount = exec_amount * bl.price
-                print(f'get_amount: {get_amount}')
                 self.balance[order.quote_ccy] += get_amount * (1 - fee_rate)
-                print(f'balance: {self.balance[order.quote_ccy]}')
                 order.exe(bl.price, exec_amount, get_amount * fee_rate)
         else:
             raise Exception(f'Unsupported order side: {order.side}')

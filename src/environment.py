@@ -5,11 +5,12 @@ from src.simTime import SimTime
 
 
 class Environment:
-    def __init__(self, path: str, simTime: SimTime) -> None:
+    def __init__(self, path: str, simTime: SimTime, max_interval: int = 2000) -> None:
         self.simTime = simTime
         self.path = path
         self.exchanges: Dict[str, Exchange] = {}
-        self.exchanges['OKX'] = Exchange(path, simTime)
+        self.max_interval = max_interval
+        self.exchanges['OKX'] = Exchange(path, simTime, max_interval=max_interval)
     
     
     def __getitem__(self, _info):

@@ -27,3 +27,9 @@ class History:
     def save(self, path: str) -> None:
         with open(path, 'w') as f:
             json.dump(self.as_dict(), f, indent=4)
+    
+    def __len__(self) -> int:
+        return len(self._history)
+    
+    def __getitem__(self, index: int) -> dict:
+        return self._history[index]

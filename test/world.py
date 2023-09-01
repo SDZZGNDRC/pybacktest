@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 from typing import Dict, List
@@ -98,7 +99,9 @@ def metabacktest(file: Path) -> tuple:
     # initial_balance
     initial_balance: Dict[str, float] = {'OKX': data['referredBalance']['0']}
 
-    return temp_dir, strategy, start_ts, end_ts, initial_balance
+    ref = data['referredBalance']
+
+    return temp_dir, strategy, start_ts, end_ts, initial_balance, ref
 
 class MyStrategy(Strategy):
     def __init__(self, name: str, pairs: List[str]) -> None:
@@ -177,6 +180,15 @@ class TestWorld:
         
         history = world.run(backtest)
         history.save('./out/test_world_case2.json')
+        
+        # Verify
+        assert len(params[5]) == len(history)
+        ref_balances = list(params[5].items())
+        for i in range(len(params[5])):
+            for k in ref_balances[i][1].keys():
+                assert abs(ref_balances[i][1][k] - history[i]['exchanges']['OKX']['balance'][k])/ref_balances[i][1][k] < 0.000001
+        
+        shutil.rmtree(params[0])
 
 if __name__ == "__main__":
     pytest.main()

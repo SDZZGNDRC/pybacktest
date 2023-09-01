@@ -29,8 +29,7 @@ def metabacktest(file: Path) -> tuple:
     
     df = pd.DataFrame(columns=['instId', 'price', 'size', 'numOrders', 'side', 'timestamp', 'action'])
     instId = list(data['books'].keys())[0]
-    start_ts = 0
-    end_ts = 0
+    start_ts, end_ts = data['bt_period']
     
     slices = list(data['books'].values())[0]['slices']
     len_slices = len(slices)
@@ -40,15 +39,8 @@ def metabacktest(file: Path) -> tuple:
         timestamp = int(ts)
         if i == 0:
             action = 'snapshot'
-            start_ts = timestamp
-            end_ts = timestamp
         else:
             action = 'update'
-        
-        if start_ts > timestamp:
-            start_ts = timestamp
-        if end_ts < timestamp:
-            end_ts = timestamp
         
         for ask in asks_bids['asks']:
             params = ask.split(':')
@@ -103,7 +95,10 @@ def metabacktest(file: Path) -> tuple:
 
     strategy = CustomStrategy('custom', [instId], eval_func)
 
-    return temp_dir, strategy, start_ts, end_ts
+    # initial_balance
+    initial_balance: Dict[str, float] = {'OKX': data['referredBalance']['0']}
+
+    return temp_dir, strategy, start_ts, end_ts, initial_balance
 
 class MyStrategy(Strategy):
     def __init__(self, name: str, pairs: List[str]) -> None:
@@ -177,6 +172,7 @@ class TestWorld:
             params[3],
             HistLevel.DEBUG,
             ['OKX'],
+            initial_balance=params[4],
         )
         
         history = world.run(backtest)

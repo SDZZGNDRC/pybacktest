@@ -19,7 +19,7 @@ class World:
 
     def run(self, backtest: Backtest) -> History:
         self.simTime = SimTime(backtest.start, backtest.end)
-        self.env = Environment(self.path, self.simTime, self.max_interval)
+        self.env = Environment(self.path, self.simTime, self.max_interval, backtest.initial_balance)
         
         history = History(backtest.hist_level)
         strategy = backtest.strategy
@@ -32,6 +32,7 @@ class World:
                 break
             
             if self.simTime >= backtest.end:
+                print(f'Backtest finished at {self.simTime}')
                 break
             
             self.events.extend(strategy.eval(self.env))

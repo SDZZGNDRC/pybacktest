@@ -2,6 +2,7 @@ from typing import List, Union
 import uuid
 
 from simTime import SimTime
+from src.instrument import Instrument
 
 class orderType:
     LIMIT = 'LIMIT'
@@ -42,17 +43,19 @@ class TransDetail:
 
 class Order:
     def __init__(self,
-                pair: str, orderType: str, 
+                instrument: Instrument, orderType: str, 
                 side: str, ts: Union[SimTime, int], 
                 amount: float, price: float = 0, 
+                leverage: int = 1,
                 ) -> None:
         self.uuid = uuid.uuid4()
-        self.pair = pair
+        self.instrument = instrument
         self.orderType = orderType
         self.side = side
         self.ts = int(ts) # The timestamp when the order is created
         self.simTime = ts # The simulation time
         self.price = price
+        self.leverage = leverage # Only for futures|swap
         self.amount = amount
         self.status = orderStatus.OPEN
         self.detail: List[TransDetail] = []
@@ -76,17 +79,11 @@ class Order:
     
     @property
     def base_ccy(self) -> str:
-        s = self.pair.split('-')
-        if len(s) != 2:
-            raise Exception('Invalid pair')
-        return s[0]
+        return self.instrument.base_ccy
     
     @property
     def quote_ccy(self) -> str:
-        s = self.pair.split('-')
-        if len(s) != 2:
-            raise Exception('Invalid pair')
-        return s[1]
+        return self.instrument.quote_ccy
     
     def exe(self, price: float, amount: float, fee: float) -> None:
         if self.status != orderStatus.OPEN:
@@ -113,7 +110,7 @@ class Order:
     def as_dict(self) -> dict:
         return {
             'uuid': str(self.uuid),
-            'pair': self.pair,
+            'instrument': str(self.instrument),
             'orderType': self.orderType,
             'side': self.side,
             'ts': self.ts,

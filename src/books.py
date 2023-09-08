@@ -5,6 +5,7 @@ import os
 from typing import Dict, List, Tuple, Union
 
 import pandas as pd
+from src.instrument import Instrument
 from src.simTime import SimTime
 
 
@@ -148,8 +149,8 @@ class Bids:
         return iter(self._bids)
 
 class Book:
-    def __init__(self, pair: str, simTime: SimTime, path: str, max_interval: int = 2000) -> None:
-        self.pair = pair
+    def __init__(self, instId: str, simTime: SimTime, path: str, max_interval: int = 2000) -> None:
+        self.instId = instId
         self.simTime = simTime
         self.path = path
         self.max_interval = max_interval
@@ -276,12 +277,13 @@ class Books:
         return len(self._books)
     
     
-    def __getitem__(self, pair: str) -> Book:
-        if not isinstance(pair, str):
-            raise TypeError("Pair must be a string.")
-        if pair not in self._books:
-            book_path = os.path.join(self.path, pair)
-            self._books[pair] = Book(pair, self.simTime, book_path, self.max_interval)
+    def __getitem__(self, instId: str) -> Book:
+        if not isinstance(instId, str) or not isinstance(instId, Instrument):
+            raise TypeError("instId must be a string.")
+        instId = str(instId)
+        if instId not in self._books:
+            book_path = os.path.join(self.path, instId)
+            self._books[instId] = Book(instId, self.simTime, book_path, self.max_interval)
         
-        return self._books[pair]
+        return self._books[instId]
     

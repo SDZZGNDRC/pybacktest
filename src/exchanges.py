@@ -1,7 +1,8 @@
 
 from typing import Dict, List
+from src.instrument import InstrumentType
 from src.marketdata import MarketData
-from src.order import Order
+from src.order import Order, orderSide, orderType
 from src.simTime import SimTime
 
 class Balance:
@@ -45,10 +46,18 @@ class Exchange:
         self.orders: List[Order] = []
         self.balance: Balance = Balance(initial_balance)
         self.transaction_fee = {
-            'MarketOrder': {
-                'MAKER': 0.0008,
-                'TAKER': 0.0010,
-            }
+            'SPOT': {
+                'MarketOrder': {
+                    'MAKER': 0.0008,
+                    'TAKER': 0.0010,
+                }
+            },
+            'FUTURES': {
+                'MarketOrder': {
+                    'MAKER': 0.0002,
+                    'TAKER': 0.0005,
+                }
+            },
         }
     
     
@@ -68,9 +77,9 @@ class Exchange:
         self.orders.append(order)
     
     def __execute(self, order: Order):
-        if order.orderType == 'LIMIT':
+        if order.orderType == orderType.LIMIT:
             self.__execute_limit_order(order)
-        elif order.orderType == 'MARKET':
+        elif order.orderType == orderType.MARKET:
             self.__execute_market_order(order)
         else:
             raise Exception(f'Unsupported order type: {order.orderType}')
@@ -81,10 +90,23 @@ class Exchange:
     
     
     def __execute_market_order(self, order: Order):
-        fee_rate = self.transaction_fee['MarketOrder']['TAKER']
+        if order.instrument.type == InstrumentType.SPOT:
+            self.__execute_market_order_spot(order)
+        elif order.instrument.type == InstrumentType.FUTURES:
+            if not order.instrument.quote_ccy in ['USDT', 'USDC']:
+                raise Exception(f'Unsupported quote currency: {order.instrument.quote_ccy} for futures')
+            self.__execute_market_order_futures(order)
+        elif order.instrument.type == InstrumentType.SWAP:
+            raise NotImplementedError()
+        else:
+            raise Exception(f'Unsupported instrument type: {order.instrument.type}')
         
-        if order.side == 'BUY':
-            for bl in self.marketData['books'][order.pair]['ask']:
+
+    def __execute_market_order_spot(self, order: Order):
+        fee_rate = self.transaction_fee['SPOT']['MarketOrder']['TAKER']
+        instId = str(order.instrument.instId)
+        if order.side == orderSide.BUY:
+            for bl in self.marketData['books'][instId]['ask']:
                 if order.leftAmount == 0:
                     break
                 
@@ -98,8 +120,8 @@ class Exchange:
                 self.balance[order.quote_ccy] -= cost
                 self.balance[order.base_ccy] += exec_amount * (1 - fee_rate)
                 order.exe(bl.price, exec_amount, exec_amount * fee_rate)
-        elif order.side == 'SELL':
-            for bl in self.marketData['books'][order.pair]['bid']:
+        elif order.side == orderSide.SELL:
+            for bl in self.marketData['books'][instId]['bid']:
                 if order.leftAmount == 0:
                     break
                 exec_amount = min(order.leftAmount, bl.amount)
@@ -114,7 +136,20 @@ class Exchange:
                 order.exe(bl.price, exec_amount, get_amount * fee_rate)
         else:
             raise Exception(f'Unsupported order side: {order.side}')
-        
+    
+    def __execute_market_order_futures(self, order: Order):
+        fee_rate = self.transaction_fee['FUTURES']['MarketOrder']['TAKER']
+        instId = str(order.instrument.instId)
+        if order.side == orderSide.BUY:
+            for bl in self.marketData['books'][instId]['ask']:
+                if order.leftAmount == 0:
+                    break
+                
+                exec_amount = min(order.leftAmount, bl.amount)
+                cost = bl.price * exec_amount
+                
+                
+        raise NotImplementedError()
 
     def __hash__(self) -> int:
         return hash((tuple(self.orders), self.balance))
@@ -124,3 +159,4 @@ class Exchange:
             'orders': [o.as_dict() for o in self.orders],
             'balance': self.balance.as_dict(),
         }
+    

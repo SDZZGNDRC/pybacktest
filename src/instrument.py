@@ -36,14 +36,18 @@ class Instrument:
     def __init__(self, 
                 pair: Pair,
                 instId: str,
-                type: str,
+                type: str, # SPOT | FUTURES | SWAP
                 contract_size: Optional[float] = None,
                 tick_size: Optional[float] = None,
                 ) -> None:
         self.pair = pair
         self.instId = instId
         self.type = type
+        if contract_size and contract_size <= 0:
+            raise Exception(f'Invalid contract size: {contract_size}')
         self._contract_size = contract_size
+        if tick_size and tick_size <= 0:
+            raise Exception(f'Invalid tick size: {tick_size}')
         self._tick_size = tick_size
     
     @property
@@ -68,8 +72,6 @@ class Instrument:
     def tick_size(self) -> float:
         if self._tick_size is None:
             raise Exception(f'Tick size is not available for {self.instId}')
-        if self._tick_size <= 0:
-            raise Exception(f'Invalid tick size: {self._tick_size}')
         return self._tick_size
     
     def is_opened(self, close_ts: Union[SimTime, int]) -> bool:
@@ -85,6 +87,14 @@ class Instrument:
                 return False
         else:
             raise Exception(f'Invalid instrument type: {self.type}')
+    
+    @property
+    def start_ts(self) -> int:
+        raise NotImplementedError
+    
+    @property
+    def end_ts(self) -> int:
+        raise NotImplementedError
     
     def __str__(self) -> str:
         return self.instId

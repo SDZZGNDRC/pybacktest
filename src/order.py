@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Optional
 import uuid
 
 from simTime import SimTime
@@ -17,6 +17,12 @@ class orderStatus:
 class orderSide:
     BUY = 'BUY'
     SELL = 'SELL'
+    LONG = 'LONG'
+    SHORT = 'SHORT'
+
+class orderAction:
+    OPEN = 'OPEN'
+    CLOSE = 'CLOSE'
 
 class TransDetail:
     def __init__(self,
@@ -44,9 +50,9 @@ class TransDetail:
 class Order:
     def __init__(self,
                 instrument: Instrument, orderType: str, 
-                side: str, ts: Union[SimTime, int], 
+                side: str, ts: SimTime, 
                 amount: float, price: float = 0, 
-                leverage: int = 1,
+                leverage: int = 1, action: Optional[str] = None
                 ) -> None:
         self.uuid = uuid.uuid4()
         self.instrument = instrument
@@ -56,6 +62,7 @@ class Order:
         self.simTime = ts # The simulation time
         self.price = price
         self.leverage = leverage # Only for futures|swap
+        self.action = action.upper() if action else action # OPEN|CLOSE; Only for futures|swap
         self.amount = amount
         self.status = orderStatus.OPEN
         self.detail: List[TransDetail] = []
@@ -117,6 +124,8 @@ class Order:
             'simTime': int(self.simTime),
             'price': self.price,
             'amount': self.amount,
+            'leverage': self.leverage,
+            'action': self.action,
             'status': self.status,
             'detail': [d.as_dict() for d in self.detail],
         }

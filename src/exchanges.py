@@ -1,8 +1,9 @@
 
 from typing import Dict, List
+from src.contracts import Contract, ContractDirection, Contracts
 from src.instrument import InstrumentType
 from src.marketdata import MarketData
-from src.order import Order, orderSide, orderType
+from src.order import Order, orderAction, orderSide, orderType
 from src.simTime import SimTime
 
 class Balance:
@@ -42,9 +43,12 @@ class Balance:
 
 class Exchange:
     def __init__(self, data_path: str, simTime: SimTime, initial_balance: Dict[str, float] = {'USDT': 100, 'USDC': 100}, max_interval: int = 2000) -> None:
+        self.simTime = simTime
         self.marketData = MarketData(simTime, data_path, max_interval)
         self.orders: List[Order] = []
         self.balance: Balance = Balance(initial_balance)
+        self.contracts: Contracts = Contracts(simTime)
+        
         self.transaction_fee = {
             'SPOT': {
                 'MarketOrder': {
@@ -138,24 +142,88 @@ class Exchange:
             raise Exception(f'Unsupported order side: {order.side}')
     
     def __execute_market_order_futures(self, order: Order):
+        # NOTICE: ONLY support `USDT/USDC Contracts`.
+        
         fee_rate = self.transaction_fee['FUTURES']['MarketOrder']['TAKER']
         instId = str(order.instrument.instId)
-        if order.side == orderSide.BUY:
-            for bl in self.marketData['books'][instId]['ask']:
+        
+        if order.action == orderAction.OPEN:
+            if order.side == orderSide.LONG:
+                contract_direction = ContractDirection.LONG
+                bls = self.marketData['books'][instId]['ask'] # open long -> ask
+            elif order.side == orderSide.SHORT:
+                contract_direction = ContractDirection.SHORT
+                bls = self.marketData['books'][instId]['bid'] # open short -> bid
+            else:
+                raise Exception(f'Unsupported order side: {order.side}')
+            
+            for bl in bls:
                 if order.leftAmount == 0:
                     break
                 
                 exec_amount = min(order.leftAmount, bl.amount)
-                cost = bl.price * exec_amount
+                fee = bl.price * exec_amount * order.instrument.contract_size * fee_rate # FIXME: Haven't consider the contract multiplier here
+                contract_cost = bl.price * exec_amount / order.leverage # The cost of the contract.
+                cost = contract_cost + fee # total cost
+                if cost > self.balance[order.quote_ccy]:
+                    order.insufficient()
+                    print(f'[{self.marketData.simTime}] Insufficient balance: {self.balance[order.quote_ccy]} < {cost}')
+                    break
                 
+                new_c = Contract(
+                    order.instrument.instId,
+                    order.instrument.start_ts,
+                    order.instrument.end_ts,
+                    contract_direction,
+                    order.instrument.contract_size,
+                    order.leverage,
+                    
+                    int(self.simTime),
+                    bl.price,
+                    int(exec_amount),
+                )
+                self.contracts.open(new_c)
                 
-        raise NotImplementedError()
+                # Deducting
+                self.balance[order.quote_ccy] -= cost
+        elif order.action == orderAction.CLOSE:
+            if order.side == orderSide.LONG:
+                contract_direction = ContractDirection.LONG
+                bls = self.marketData['books'][instId]['bid'] # close long -> bid
+            elif order.side == orderSide.SHORT:
+                contract_direction = ContractDirection.SHORT
+                bls = self.marketData['books'][instId]['ask'] # close short -> aks
+            else:
+                raise Exception(f'Unsupported order side: {order.side}')
+            
+            for bl in bls:
+                if order.leftAmount == 0:
+                    break
+                
+                exec_amount = min(order.leftAmount, bl.amount)
+                fee = bl.price * exec_amount * order.instrument.contract_size * fee_rate
+                get_ccy = exec_amount * order.instrument.contract_size * bl.price - fee
+                
+                if self.balance[order.base_ccy] + get_ccy < 0:
+                    order.insufficient()
+                    break
+                
+                # Make sure there are enough contracts to trade.
+                if self.contracts.close(
+                    instId, contract_direction, 
+                    order.leverage, bl.price, int(exec_amount)):
+                    self.balance[order.base_ccy] += get_ccy
+                else:
+                    raise Exception(
+                        f"Not found such contract: {[instId, contract_direction, order.leverage]}"
+                        )
 
     def __hash__(self) -> int:
         return hash((tuple(self.orders), self.balance))
     
     def as_dict(self) -> dict:
         return {
+            'simTime': int(self.simTime),
             'orders': [o.as_dict() for o in self.orders],
             'balance': self.balance.as_dict(),
         }

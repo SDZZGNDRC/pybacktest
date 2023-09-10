@@ -66,6 +66,8 @@ class Exchange:
     
     
     def eval(self) -> None:
+        # TODO: Should try to make delivery of the contracts.
+        # TODO: Should simulate the delay of network.
         if len(self.orders) == 0:
             return
         
@@ -163,8 +165,8 @@ class Exchange:
                 
                 exec_amount = min(order.leftAmount, bl.amount)
                 fee = bl.price * exec_amount * order.instrument.contract_size * fee_rate # FIXME: Haven't consider the contract multiplier here
-                contract_cost = bl.price * exec_amount / order.leverage # The cost of the contract.
-                cost = contract_cost + fee # total cost
+                margin = bl.price * exec_amount / order.leverage
+                cost = margin + fee # total cost
                 if cost > self.balance[order.quote_ccy]:
                     order.insufficient()
                     print(f'[{self.marketData.simTime}] Insufficient balance: {self.balance[order.quote_ccy]} < {cost}')

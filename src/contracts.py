@@ -50,7 +50,7 @@ class TradeDetail:
         }
 
 class Contract:
-    
+    # FIXME: Need to enhance support for margin.
     def __init__(self, 
                 instId: str, 
                 start: int, 
@@ -144,6 +144,14 @@ class Contract:
         open_details = [e for e in self._details if e.action == ContractAction.OPEN]
         return sum([d.price*d.num for d in open_details])/sum([d.num for d in open_details])
     
+    # Average Close Price
+    @property
+    def ACP(self) -> float:
+        if self.STATUS != ContractStatus.CLOSE:
+            raise Exception("Only closed contracts have ACP.")
+        close_details = [e for e in self._details if e.action == ContractAction.CLOSE]
+        return sum([d.price*d.num for d in close_details])/sum([d.num for d in close_details])
+    
     @property
     def STATUS(self) -> str:
         return self._status
@@ -219,6 +227,7 @@ class Contract:
             self._leverage,
         )
         new_contract._details = self._details + other._details
+        new_contract._details.sort(key=lambda d: d.ts)
         if new_contract.num > 0:
             new_contract._status = ContractStatus.OPEN
         
@@ -240,16 +249,19 @@ class Contracts:
     def open(self, c: Contract) -> None:
         if c.STATUS == ContractStatus.CLOSE:
             raise Exception("Can not add a closed contract.")
-        if c.direction == ContractDirection.LONG:
-            same_c = list(filter(lambda cont: cont == c, self._contracts))
-            if same_c:
-                if len(same_c) > 1:
-                    raise Exception(f'There multiple contracts of the same type')
-                else:
-                    same_c = same_c[0]
-                same_c += c
+        same_c = list(filter(lambda cont: cont == c, self._contracts))
+        if same_c:
+            if len(same_c) > 1:
+                raise Exception(f'There multiple contracts of the same type')
             else:
+                same_c = same_c[0]
+            if same_c.STATUS == ContractStatus.CLOSE:
+                self._contracts.remove(same_c)
                 self._contracts.append(c)
+            else:
+                same_c += c
+        else:
+            self._contracts.append(c)
     
     def close(self, instId: str, direct: str, leverage: int, price: float, num: int) -> bool:
         filter_func: Callable[[Contract], bool] = lambda c: c.instId == instId and \
@@ -283,6 +295,7 @@ class Contracts:
     
     def as_dict(self) -> dict:
         return {
+            'simTime': int(self.simTime),
             'contracts': [
                 c.as_dict() for c in self._contracts
             ]

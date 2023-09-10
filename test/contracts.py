@@ -1,8 +1,11 @@
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
+from typing import Callable
+
+from src.simTime import SimTime
 
 import pytest
-from src.contracts import Contract, ContractAction
+from src.contracts import Contract, ContractAction, ContractDirection, ContractStatus, Contracts
 
 @pytest.fixture
 def contract():
@@ -13,7 +16,6 @@ def contract():
         direction='LONG',
         size=1,
         leverage=10,
-        margin=1000
     )
 
 def test_contract_creation(contract):
@@ -23,9 +25,8 @@ def test_contract_creation(contract):
     assert contract._direction == 'LONG'
     assert contract._size == 1
     assert contract._leverage == 10
-    assert contract._margin == 1000
     assert contract._exit_ts == 0.0
-    assert contract._status == 'OPEN'
+    assert contract._status == ContractStatus.INIT
     assert contract._details == []
 
 def test_open_trade(contract):
@@ -68,7 +69,6 @@ def test_as_dict(contract):
     assert contract_dict['direction'] == 'LONG'
     assert contract_dict['size'] == 1
     assert contract_dict['leverage'] == 10
-    assert contract_dict['margin'] == 1000
     assert contract_dict['_exit_ts'] == 0.0
     assert contract_dict['status'] == 'OPEN'
     assert len(contract_dict['entry_details']) == 1
@@ -83,7 +83,6 @@ def test_contract_equality(contract):
         direction='LONG',
         size=1,
         leverage=10,
-        margin=1000
     )
     contract2 = Contract(
         instId='BTCUSDT',
@@ -92,7 +91,124 @@ def test_contract_equality(contract):
         direction='SHORT',
         size=1,
         leverage=10,
-        margin=1000
     )
     assert contract == contract1
     assert contract != contract2
+
+@pytest.fixture
+def ctf_1():
+    def f():
+        c = Contract(
+            'BTC-USDT-231229',
+            1686903000972,
+            1703836800000,
+            ContractDirection.LONG,
+            0.01,
+            10,
+        )
+        return c
+    return f
+
+class TestContract:
+    
+    def test_case1(self, ctf_1: Callable[[],Contract]):
+        ct_1 = ctf_1()
+        assert ct_1.STATUS == ContractStatus.INIT
+        assert ct_1.num == 0
+        with pytest.raises(ZeroDivisionError):
+            ct_1.AOP
+        with pytest.raises(Exception):
+            ct_1.close(1686906000972, 20000.123, 1)
+        
+        ct_1.open(1686905000972, 25000.123, 2)
+        
+        assert ct_1.STATUS == ContractStatus.OPEN
+        assert ct_1.num == 2
+        assert ct_1.AOP == 25000.123
+        assert ct_1.direction == ContractDirection.LONG
+        assert ct_1.leverage == 10
+        with pytest.raises(ValueError):
+            ct_1.close(1686906000972, 20000.123, 3)
+        
+        
+        ct_1.close(1686906000972, 20000.123, 1)
+        
+        with pytest.raises(Exception):
+            ct_1.ACP
+        
+        ct_1.close(1686907000972, 22000.123, 1)
+        
+        assert ct_1.STATUS == ContractStatus.CLOSE
+        assert ct_1.num == 0
+        assert ct_1.AOP == 25000.123
+        assert ct_1.ACP == 21000.123
+        
+        with pytest.raises(Exception):
+            ct_1.open(1686906000972, 20000.123, 1)
+            ct_1.close(1686906000972, 20000.123, 1)
+    
+    def test_case2(self, ctf_1: Callable[[], Contract]):
+        ct_1 = ctf_1()
+        ct_2 = ctf_1()
+        
+        ct_1.open(1686905000972, 25000.123, 1)
+        ct_2.open(1686904000972, 22000.123, 1)
+        ct_3 = ct_1 + ct_2
+        
+        assert ct_3 == ct_1 and ct_3 == ct_2
+        assert ct_3.num == ct_1.num + ct_2.num
+        assert ct_3.AOP == 23500.123
+        assert ct_3.STATUS == ContractStatus.OPEN
+        
+        ct_3.close(1686907000972, 26000.123, 1)
+        ct_3.close(1686908000972, 20000.123, 1)
+        
+        assert ct_3.STATUS == ContractStatus.CLOSE
+        assert ct_3.num == 0
+        assert ct_3.AOP == 23500.123
+        assert ct_3.ACP == 23000.123
+        
+        ct_2.close(1686907000972, 26000.123, 1)
+        
+        with pytest.raises(Exception):
+            ct_4 = ct_1 + ct_2
+
+
+@pytest.fixture
+def cts_1():
+    simTime = SimTime(1686903000972, 1703836800000)
+    cts_1 = Contracts(simTime)
+    return cts_1
+
+
+class TestContracts:
+    
+    def test_case1(self, cts_1: Contracts, ctf_1: Callable[[], Contract]):
+        ct_1 = ctf_1()
+        ct_1.open(1686905000972, 25000.123, 1)
+        instId = ct_1.instId
+        direct = ct_1.direction
+        leverage = ct_1.leverage
+        
+        cts_1.open(ct_1)
+        
+        assert len(cts_1) == 1
+        assert cts_1.close(
+                instId, direct, leverage,
+                26000.123, 2) == False
+        
+        cts_1.close(
+            instId, direct, leverage,
+            26000.123,
+            1
+        )
+        
+        assert len(cts_1) == 0
+        
+        ct_2 = ctf_1()
+        ct_2.open(1686905000972, 27000.123, 2)
+        cts_1.open(ct_2)
+        
+        assert len(cts_1) == 2
+        
+

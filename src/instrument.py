@@ -37,12 +37,20 @@ class Instrument:
                 pair: Pair,
                 instId: str,
                 type: str, # SPOT | FUTURES | SWAP
+                listTime: Optional[int] = None,
+                expTime: Optional[int] = None,
                 contract_size: Optional[float] = None,
                 tick_size: Optional[float] = None,
                 ) -> None:
         self.pair = pair
         self.instId = instId
         self.type = type
+        if listTime and listTime <= 0:
+            raise ValueError(f'listTime {listTime} should be greater than 0.')
+        self._listTime = listTime
+        if expTime and expTime <= 0:
+            raise ValueError(f'expTime {listTime} should be greater than 0.')
+        self._expTime = expTime
         if contract_size and contract_size <= 0:
             raise Exception(f'Invalid contract size: {contract_size}')
         self._contract_size = contract_size

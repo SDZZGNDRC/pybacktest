@@ -15,21 +15,21 @@ class BookLevel:
         self._validate_amount(amount)
         self._validate_count(count)
         
-        self.price = price
+        self.price = float(price)
         self.amount = float(amount)
         self.count = int(count)
     
     
     def _validate_price(self, price):
-        if not isinstance(price, float):
-            raise TypeError("Price must be a float.")
+        # if not isinstance(price, float):
+        #     raise TypeError("Price must be a float.")
         if price <= 0:
             raise ValueError("Price must be greater than zero.")
     
     
     def _validate_amount(self, amount):
-        if not isinstance(amount, float) and not isinstance(amount, int):
-            raise TypeError("Amount must be a float or an integer.")
+        # if not isinstance(amount, float) and not isinstance(amount, int):
+        #     raise TypeError(f"Amount must be a float or an integer but get type {type(amount)}.")
         if amount < 0:
             raise ValueError("Amount must be greater than or equal to zero.")
     
@@ -182,6 +182,9 @@ class Book:
                 if self.current_index != i:
                     self.current_index = i
                     return True
+        
+        if self.current_index == -1:
+            raise Exception(f'Can not find a chunk files for the simTime {int(self.simTime)}')
         
         return False
 

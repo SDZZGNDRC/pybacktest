@@ -47,6 +47,7 @@ class Exchange:
         self.marketData = MarketData(simTime, data_path, max_interval)
         self.orders: List[Order] = []
         self.balance: Balance = Balance(initial_balance)
+        self.borrow: Balance = Balance({})
         self.contracts: Contracts = Contracts(simTime)
         
         self.transaction_fee = {
@@ -81,6 +82,10 @@ class Exchange:
             raise Exception(f'Order status must be OPEN, not {order.status}')
         
         self.orders.append(order)
+    
+    def __hedge(self, cont_1: Contract, cont_2: Contract):
+
+        raise NotImplementedError
     
     def __execute(self, order: Order):
         if order.orderType == orderType.LIMIT:
@@ -152,10 +157,10 @@ class Exchange:
         if order.action == orderAction.OPEN:
             if order.side == orderSide.LONG:
                 contract_direction = ContractDirection.LONG
-                bls = self.marketData['books'][instId]['ask'] # open long -> ask
+                bls = self.marketData['books'][instId]['ask'] # open long(buy) -> ask
             elif order.side == orderSide.SHORT:
                 contract_direction = ContractDirection.SHORT
-                bls = self.marketData['books'][instId]['bid'] # open short -> bid
+                bls = self.marketData['books'][instId]['bid'] # open short(sell) -> bid
             else:
                 raise Exception(f'Unsupported order side: {order.side}')
             
@@ -166,11 +171,14 @@ class Exchange:
                 exec_amount = min(order.leftAmount, bl.amount)
                 fee = bl.price * exec_amount * order.instrument.contract_size * fee_rate # FIXME: Haven't consider the contract multiplier here
                 margin = bl.price * exec_amount / order.leverage
+                borrow = bl.price * exec_amount - margin # Borrowed amount.
                 cost = margin + fee # total cost
                 if cost > self.balance[order.quote_ccy]:
                     order.insufficient()
                     print(f'[{self.marketData.simTime}] Insufficient balance: {self.balance[order.quote_ccy]} < {cost}')
                     break
+                
+                self.borrow[order.instrument.quote_ccy] += borrow
                 
                 new_c = Contract(
                     order.instrument.instId,
@@ -188,13 +196,15 @@ class Exchange:
                 
                 # Deducting
                 self.balance[order.quote_ccy] -= cost
+                order.exe(bl.price, exec_amount, fee)
         elif order.action == orderAction.CLOSE:
+            
             if order.side == orderSide.LONG:
                 contract_direction = ContractDirection.LONG
-                bls = self.marketData['books'][instId]['bid'] # close long -> bid
+                bls = self.marketData['books'][instId]['bid'] # close long(sell) -> bid
             elif order.side == orderSide.SHORT:
                 contract_direction = ContractDirection.SHORT
-                bls = self.marketData['books'][instId]['ask'] # close short -> aks
+                bls = self.marketData['books'][instId]['ask'] # close short(buy) -> aks
             else:
                 raise Exception(f'Unsupported order side: {order.side}')
             
@@ -206,7 +216,7 @@ class Exchange:
                 fee = bl.price * exec_amount * order.instrument.contract_size * fee_rate
                 get_ccy = exec_amount * order.instrument.contract_size * bl.price - fee
                 
-                if self.balance[order.base_ccy] + get_ccy < 0:
+                if self.balance[order.quote_ccy] + get_ccy < 0:
                     order.insufficient()
                     break
                 
@@ -214,7 +224,16 @@ class Exchange:
                 if self.contracts.close(
                     instId, contract_direction, 
                     order.leverage, bl.price, int(exec_amount)):
-                    self.balance[order.base_ccy] += get_ccy
+                    if self.borrow[order.quote_ccy] > 0: # Repay the loans first.
+                        repay_amount = min(get_ccy, self.borrow[order.quote_ccy])
+                        left_amount = get_ccy - repay_amount
+                        
+                        self.borrow[order.quote_ccy] -= repay_amount
+                        self.balance[order.quote_ccy] += left_amount
+                    else:
+                        self.balance[order.quote_ccy] += get_ccy
+                    
+                    order.exe(bl.price, exec_amount, fee)
                 else:
                     raise Exception(
                         f"Not found such contract: {[instId, contract_direction, order.leverage]}"
@@ -228,5 +247,6 @@ class Exchange:
             'simTime': int(self.simTime),
             'orders': [o.as_dict() for o in self.orders],
             'balance': self.balance.as_dict(),
+            'contracts': self.contracts.as_dict(),
         }
     

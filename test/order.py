@@ -3,15 +3,15 @@ import sys
 sys.path.insert(0, sys.path[0]+"/../")
 import pytest
 from src.order import Order, orderType, orderSide, orderStatus
-from src.instrument import Instrument, InstrumentType, Pair
+from src.instrument import Instrument, InstType, Pair
 from simTime import SimTime
 
 def test_order_init():
     simTime = SimTime(0, 100)
     pair = Pair('BTC', 'USDT')
-    instrument = Instrument(pair, 'USDT', InstrumentType.SPOT)
+    instrument = Instrument(pair, 'USDT', InstType.SPOT)
     order_type = orderType.LIMIT
-    side = orderSide.BUY
+    side = orderSide.BUYLONG
     price = 10000.0
     amount = 1.0
     order = Order(instrument, order_type, side, simTime, price, amount)
@@ -28,9 +28,9 @@ def test_order_init():
 def test_order_ATP_exception():
     simTime = SimTime(0, 100)
     pair = Pair('BTC', 'USDT')
-    instrument = Instrument(pair, 'USDT', InstrumentType.SPOT)
+    instrument = Instrument(pair, 'USDT', InstType.SPOT)
     order_type = orderType.LIMIT
-    side = orderSide.BUY
+    side = orderSide.BUYLONG
     price = 10000.0
     amount = 1.0
     order = Order(instrument, order_type, side, simTime, price, amount)
@@ -41,9 +41,9 @@ def test_order_ATP_exception():
 def test_order_fee_exception():
     simTime = SimTime(0, 100)
     pair = Pair('BTC', 'USDT')
-    instrument = Instrument(pair, 'USDT', InstrumentType.SPOT)
+    instrument = Instrument(pair, 'USDT', InstType.SPOT)
     order_type = orderType.LIMIT
-    side = orderSide.BUY
+    side = orderSide.BUYLONG
     price = 10000.0
     amount = 1.0
     order = Order(instrument, order_type, side, simTime, price, amount)
@@ -54,9 +54,9 @@ def test_order_fee_exception():
 def test_order_exe():
     simTime = SimTime(0, 100)
     pair = Pair('BTC', 'USDT')
-    instrument = Instrument(pair, 'USDT', InstrumentType.SPOT)
+    instrument = Instrument(pair, 'USDT', InstType.SPOT)
     order_type = orderType.LIMIT
-    side = orderSide.BUY
+    side = orderSide.BUYLONG
     price = 10000.0
     amount = 1.0
     order = Order(instrument, order_type, side, simTime, price, amount)
@@ -74,9 +74,9 @@ def test_order_exe():
 def test_order_exe_exception():
     simTime = SimTime(0, 100)
     pair = Pair('BTC', 'USDT')
-    instrument = Instrument(pair, 'USDT', InstrumentType.SPOT)
+    instrument = Instrument(pair, 'USDT', InstType.SPOT)
     order_type = orderType.LIMIT
-    side = orderSide.BUY
+    side = orderSide.BUYLONG
     price = 10000.0
     amount = 1.0
     order = Order(instrument, order_type, side, simTime, price, amount)
@@ -87,9 +87,9 @@ def test_order_exe_exception():
 def test_order_ATP_fee_after_close():
     simTime = SimTime(0, 100)
     pair = Pair('BTC', 'USDT')
-    instrument = Instrument(pair, 'USDT', InstrumentType.SPOT)
+    instrument = Instrument(pair, 'USDT', InstType.SPOT)
     order_type = orderType.LIMIT
-    side = orderSide.BUY
+    side = orderSide.BUYLONG
     price = 10000.0
     amount = 1.0
     order = Order(instrument, order_type, side, simTime, price, amount)

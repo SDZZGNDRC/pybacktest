@@ -1,26 +1,25 @@
+from enum import Enum
 from typing import List, Optional
 import uuid
 
 from simTime import SimTime
 from src.instrument import Instrument
 
-class orderType:
+class orderType(Enum):
     LIMIT = 'LIMIT'
     MARKET = 'MARKET'
 
-class orderStatus:
+class orderStatus(Enum):
     OPEN = 'OPEN'
     CLOSED = 'CLOSED'
     CANCELED = 'CANCELED'
     INSUFFICIENT = 'INSUFFICIENT'
 
-class orderSide:
-    BUY = 'BUY'
-    SELL = 'SELL'
-    LONG = 'LONG'
-    SHORT = 'SHORT'
+class orderSide(Enum):
+    BUYLONG = 'BUYLONG'
+    SELLSHORT = 'SELLSHORT'
 
-class orderAction:
+class orderAction(Enum):
     OPEN = 'OPEN'
     CLOSE = 'CLOSE'
 
@@ -49,20 +48,20 @@ class TransDetail:
 
 class Order:
     def __init__(self,
-                instrument: Instrument, orderType: str, 
-                side: str, ts: SimTime, 
+                inst: Instrument, orderType: orderType, 
+                side: orderSide, simTime: SimTime, 
                 amount: float, price: float = 0, 
-                leverage: int = 1, action: Optional[str] = None
+                leverage: int = 1, action: Optional[orderAction] = None
                 ) -> None:
         self.uuid = uuid.uuid4()
-        self.instrument = instrument
+        self.inst = inst
         self.orderType = orderType
         self.side = side
-        self.ts = int(ts) # The timestamp when the order is created
-        self.simTime = ts # The simulation time
+        self.create_ts = int(simTime) # The timestamp when the order is created
+        self.simTime = simTime # The simulation time
         self.price = price
         self.leverage = leverage # Only for futures|swap
-        self.action = action.upper() if action else action # OPEN|CLOSE; Only for futures|swap
+        self.action = action # OPEN|CLOSE; Only for futures|swap
         self.amount = amount
         self.status = orderStatus.OPEN
         self.detail: List[TransDetail] = []
@@ -86,11 +85,11 @@ class Order:
     
     @property
     def base_ccy(self) -> str:
-        return self.instrument.base_ccy
+        return self.inst.base_ccy
     
     @property
     def quote_ccy(self) -> str:
-        return self.instrument.quote_ccy
+        return self.inst.quote_ccy
     
     def exe(self, price: float, amount: float, fee: float) -> None:
         if self.status != orderStatus.OPEN:
@@ -117,10 +116,10 @@ class Order:
     def as_dict(self) -> dict:
         return {
             'uuid': str(self.uuid),
-            'instrument': str(self.instrument),
+            'instrument': str(self.inst),
             'orderType': self.orderType,
             'side': self.side,
-            'ts': self.ts,
+            'ts': self.create_ts,
             'simTime': int(self.simTime),
             'price': self.price,
             'amount': self.amount,

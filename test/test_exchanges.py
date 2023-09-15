@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 import pytest
-from src.instrument import Instrument, InstrumentType, Pair
+from src.instrument import Instrument, InstType, Pair
 from src.order import Order, orderAction, orderSide, orderStatus, orderType
 
 sys.path.insert(0, sys.path[0]+"/../")
@@ -43,7 +43,7 @@ class TestExchange:
         inst = Instrument(
             Pair('BTC','USDT'),
             'BTC-USDT-230721',
-            InstrumentType.FUTURES,
+            InstType.FUTURES,
             1689064733703, 
             1689926400000,
             0.01,
@@ -52,7 +52,7 @@ class TestExchange:
         order = Order(
             inst,
             orderType.MARKET,
-            orderSide.LONG,
+            orderSide.BUYLONG,
             simTime,
             2,
             leverage=10,
@@ -80,7 +80,7 @@ class TestExchange:
         order = Order(
             inst, 
             orderType.MARKET,
-            orderSide.LONG,
+            orderSide.BUYLONG,
             simTime,
             1,
             leverage=10,
@@ -103,7 +103,7 @@ class TestExchange:
         order = Order(
             inst,
             orderType.MARKET,
-            orderSide.LONG,
+            orderSide.BUYLONG,
             simTime,
             1,
             leverage=10,

@@ -1,9 +1,10 @@
 
 from typing import Dict, List
-from src.contracts import Contract, ContractDirection, Contracts
-from src.instrument import InstrumentType
+from src.contract import ContRole
+from src.instrument import InstType
 from src.marketdata import MarketData
 from src.order import Order, orderAction, orderSide, orderType
+from src.positions import PosDirection, Positions
 from src.simTime import SimTime
 
 class Balance:
@@ -47,8 +48,7 @@ class Exchange:
         self.marketData = MarketData(simTime, data_path, max_interval)
         self.orders: List[Order] = []
         self.balance: Balance = Balance(initial_balance)
-        self.borrow: Balance = Balance({})
-        self.contracts: Contracts = Contracts(simTime)
+        self.positions: Positions = Positions()
         
         self.transaction_fee = {
             'SPOT': {
@@ -83,10 +83,6 @@ class Exchange:
         
         self.orders.append(order)
     
-    def __hedge(self, cont_1: Contract, cont_2: Contract):
-
-        raise NotImplementedError
-    
     def __execute(self, order: Order):
         if order.orderType == orderType.LIMIT:
             self.__execute_limit_order(order)
@@ -101,22 +97,22 @@ class Exchange:
     
     
     def __execute_market_order(self, order: Order):
-        if order.instrument.type == InstrumentType.SPOT:
+        if order.inst.type == InstType.SPOT:
             self.__execute_market_order_spot(order)
-        elif order.instrument.type == InstrumentType.FUTURES:
-            if not order.instrument.quote_ccy in ['USDT', 'USDC']:
-                raise Exception(f'Unsupported quote currency: {order.instrument.quote_ccy} for futures')
+        elif order.inst.type == InstType.FUTURES:
+            if not order.inst.quote_ccy in ['USDT', 'USDC']:
+                raise Exception(f'Unsupported quote currency: {order.inst.quote_ccy} for futures')
             self.__execute_market_order_futures(order)
-        elif order.instrument.type == InstrumentType.SWAP:
+        elif order.inst.type == InstType.SWAP:
             raise NotImplementedError()
         else:
-            raise Exception(f'Unsupported instrument type: {order.instrument.type}')
+            raise Exception(f'Unsupported instrument type: {order.inst.type}')
         
 
     def __execute_market_order_spot(self, order: Order):
         fee_rate = self.transaction_fee['SPOT']['MarketOrder']['TAKER']
-        instId = str(order.instrument.instId)
-        if order.side == orderSide.BUY:
+        instId = str(order.inst.instId)
+        if order.side == orderSide.BUYLONG:
             for bl in self.marketData['books'][instId]['ask']:
                 if order.leftAmount == 0:
                     break
@@ -131,7 +127,7 @@ class Exchange:
                 self.balance[order.quote_ccy] -= cost
                 self.balance[order.base_ccy] += exec_amount * (1 - fee_rate)
                 order.exe(bl.price, exec_amount, exec_amount * fee_rate)
-        elif order.side == orderSide.SELL:
+        elif order.side == orderSide.SELLSHORT:
             for bl in self.marketData['books'][instId]['bid']:
                 if order.leftAmount == 0:
                     break
@@ -152,14 +148,14 @@ class Exchange:
         # NOTICE: ONLY support `USDT/USDC Contracts`.
         
         fee_rate = self.transaction_fee['FUTURES']['MarketOrder']['TAKER']
-        instId = str(order.instrument.instId)
+        instId = order.inst.instId
         
         if order.action == orderAction.OPEN:
-            if order.side == orderSide.LONG:
-                contract_direction = ContractDirection.LONG
+            if order.side == orderSide.BUYLONG:
+                pos_direct = PosDirection.BUYLONG
                 bls = self.marketData['books'][instId]['ask'] # open long(buy) -> ask
-            elif order.side == orderSide.SHORT:
-                contract_direction = ContractDirection.SHORT
+            elif order.side == orderSide.SELLSHORT:
+                pos_direct = PosDirection.SELLSHORT
                 bls = self.marketData['books'][instId]['bid'] # open short(sell) -> bid
             else:
                 raise Exception(f'Unsupported order side: {order.side}')
@@ -169,7 +165,7 @@ class Exchange:
                     break
                 
                 exec_amount = min(order.leftAmount, bl.amount)
-                fee = bl.price * exec_amount * order.instrument.contract_size * fee_rate # FIXME: Haven't consider the contract multiplier here
+                fee = bl.price * exec_amount * order.inst.contract_size * fee_rate # FIXME: Haven't consider the contract multiplier here
                 margin = bl.price * exec_amount / order.leverage
                 borrow = bl.price * exec_amount - margin # Borrowed amount.
                 cost = margin + fee # total cost
@@ -178,32 +174,22 @@ class Exchange:
                     print(f'[{self.marketData.simTime}] Insufficient balance: {self.balance[order.quote_ccy]} < {cost}')
                     break
                 
-                self.borrow[order.instrument.quote_ccy] += borrow
-                
-                new_c = Contract(
-                    order.instrument.instId,
-                    order.instrument.start_ts,
-                    order.instrument.end_ts,
-                    contract_direction,
-                    order.instrument.contract_size,
-                    order.leverage,
-                    
-                    int(self.simTime),
-                    bl.price,
-                    int(exec_amount),
+                self.positions.open(
+                    order.inst, pos_direct, 
+                    order.leverage, 
+                    bl.price, int(exec_amount)
                 )
-                self.contracts.open(new_c)
                 
                 # Deducting
                 self.balance[order.quote_ccy] -= cost
                 order.exe(bl.price, exec_amount, fee)
         elif order.action == orderAction.CLOSE:
             
-            if order.side == orderSide.LONG:
-                contract_direction = ContractDirection.LONG
+            if order.side == orderSide.BUYLONG:
+                pos_direct = PosDirection.BUYLONG
                 bls = self.marketData['books'][instId]['bid'] # close long(sell) -> bid
-            elif order.side == orderSide.SHORT:
-                contract_direction = ContractDirection.SHORT
+            elif order.side == orderSide.SELLSHORT:
+                pos_direct = PosDirection.SELLSHORT
                 bls = self.marketData['books'][instId]['ask'] # close short(buy) -> aks
             else:
                 raise Exception(f'Unsupported order side: {order.side}')
@@ -213,31 +199,24 @@ class Exchange:
                     break
                 
                 exec_amount = min(order.leftAmount, bl.amount)
-                fee = bl.price * exec_amount * order.instrument.contract_size * fee_rate
-                get_ccy = exec_amount * order.instrument.contract_size * bl.price - fee
+                fee = bl.price * exec_amount * order.inst.contract_size * fee_rate
                 
-                if self.balance[order.quote_ccy] + get_ccy < 0:
+                # NOTICE: The fee is only deducted from the balance; 
+                # when the balance cannot cover the fee, 
+                # the operation cannot be carried out, regardless of the income.
+                if self.balance[order.quote_ccy] - fee < 0:
                     order.insufficient()
                     break
                 
-                # Make sure there are enough contracts to trade.
-                if self.contracts.close(
-                    instId, contract_direction, 
-                    order.leverage, bl.price, int(exec_amount)):
-                    if self.borrow[order.quote_ccy] > 0: # Repay the loans first.
-                        repay_amount = min(get_ccy, self.borrow[order.quote_ccy])
-                        left_amount = get_ccy - repay_amount
-                        
-                        self.borrow[order.quote_ccy] -= repay_amount
-                        self.balance[order.quote_ccy] += left_amount
-                    else:
-                        self.balance[order.quote_ccy] += get_ccy
-                    
-                    order.exe(bl.price, exec_amount, fee)
-                else:
-                    raise Exception(
-                        f"Not found such contract: {[instId, contract_direction, order.leverage]}"
-                        )
+                net_profit = self.positions.close(
+                    order.inst, pos_direct, 
+                    order.leverage, 
+                    bl.price, int(exec_amount)
+                )
+                self.balance[order.quote_ccy] += net_profit - fee
+                
+                order.exe(bl.price, exec_amount, fee)
+
 
     def __hash__(self) -> int:
         return hash((tuple(self.orders), self.balance))
@@ -247,6 +226,6 @@ class Exchange:
             'simTime': int(self.simTime),
             'orders': [o.as_dict() for o in self.orders],
             'balance': self.balance.as_dict(),
-            'contracts': self.contracts.as_dict(),
+            'positions': self.positions.as_dict()
         }
     

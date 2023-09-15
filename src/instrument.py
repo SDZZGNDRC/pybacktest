@@ -27,7 +27,7 @@ class Pair:
     def quote_ccy(self) -> str:
         return self._quote_ccy
 
-class InstrumentType:
+class InstType:
     SPOT = 'SPOT'
     FUTURES = 'FUTURES'
     SWAP = 'SWAP'
@@ -70,7 +70,7 @@ class Instrument:
     def contract_size(self) -> float:
         if self._contract_size is None:
             raise Exception(f'Contract size is not available for {self.instId}')
-        if self.type != InstrumentType.FUTURES:
+        if self.type != InstType.FUTURES:
             raise Exception(f'Contract size is not available for {self.type}')
         if self._contract_size <= 0:
             raise Exception(f'Invalid contract size: {self._contract_size}')
@@ -98,12 +98,37 @@ class Instrument:
     
     @property
     def start_ts(self) -> int:
-        raise NotImplementedError
+        if self._listTime:
+            return self._listTime
+        else:
+            raise Exception("this instrument does have a start_ts")
     
     @property
     def end_ts(self) -> int:
-        raise NotImplementedError
+        if self._expTime:
+            return self._expTime
+        else:
+            raise Exception("this instrument does have a end_ts")
     
     def __str__(self) -> str:
         return self.instId
+    
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Instrument) and self.instId == other.instId:
+                return True
+            
+        return False
+    
+    def __hash__(self) -> int:
+        return hash(self.instId)
+    
+    def as_dict(self) -> dict:
+        return {
+            'instId': self.instId,
+            'type': self.type,
+            'listTime': self._listTime,
+            'expTime': self._expTime,
+            'contract_size': self._contract_size,
+            'tick_size': self._tick_size,
+        }
 

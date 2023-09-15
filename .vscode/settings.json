@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
         "BTCUSD",
+        "BUYLONG",
+        "conts",
         "datadir",
         "getitem",
         "iloc",
@@ -8,7 +10,8 @@
         "iterrows",
         "MACD",
         "marketdata",
-        "metabacktest"
+        "metabacktest",
+        "SELLSHORT"
     ],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.typeCheckingMode": "basic",

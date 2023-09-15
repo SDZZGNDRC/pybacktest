@@ -5,7 +5,7 @@ from typing import Callable
 from src.simTime import SimTime
 
 import pytest
-from src.contracts import Contract, ContractAction, ContractDirection, ContractStatus, Contracts
+from src.contract import Contract, , ContDirection, ContractStatus
 
 @pytest.fixture
 def contract():
@@ -102,7 +102,7 @@ def ctf_1():
             'BTC-USDT-231229',
             1686903000972,
             1703836800000,
-            ContractDirection.LONG,
+            ContDirection.LONG,
             0.01,
             10,
         )
@@ -125,7 +125,7 @@ class TestContract:
         assert ct_1.STATUS == ContractStatus.OPEN
         assert ct_1.num == 2
         assert ct_1.AOP == 25000.123
-        assert ct_1.direction == ContractDirection.LONG
+        assert ct_1.direction == ContDirection.LONG
         assert ct_1.leverage == 10
         with pytest.raises(ValueError):
             ct_1.close(1686906000972, 20000.123, 3)
@@ -172,43 +172,3 @@ class TestContract:
         
         with pytest.raises(Exception):
             ct_4 = ct_1 + ct_2
-
-
-@pytest.fixture
-def cts_1():
-    simTime = SimTime(1686903000972, 1703836800000)
-    cts_1 = Contracts(simTime)
-    return cts_1
-
-
-class TestContracts:
-    
-    def test_case1(self, cts_1: Contracts, ctf_1: Callable[[], Contract]):
-        ct_1 = ctf_1()
-        ct_1.open(1686905000972, 25000.123, 1)
-        instId = ct_1.instId
-        direct = ct_1.direction
-        leverage = ct_1.leverage
-        
-        cts_1.open(ct_1)
-        
-        assert len(cts_1) == 1
-        assert cts_1.close(
-                instId, direct, leverage,
-                26000.123, 2) == False
-        
-        cts_1.close(
-            instId, direct, leverage,
-            26000.123,
-            1
-        )
-        
-        assert len(cts_1) == 0
-        
-        ct_2 = ctf_1()
-        ct_2.open(1686905000972, 27000.123, 2)
-        cts_1.open(ct_2)
-        
-        assert len(cts_1) == 2
-        
-

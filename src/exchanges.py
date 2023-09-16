@@ -3,7 +3,7 @@ from typing import Dict, List
 from src.contract import ContRole
 from src.instrument import InstType
 from src.marketdata import MarketData
-from src.order import Order, orderAction, orderSide, orderType
+from src.order import Order, orderAction, orderSide, orderStatus, orderType
 from src.positions import PosDirection, Positions
 from src.simTime import SimTime
 
@@ -73,13 +73,13 @@ class Exchange:
             return
         
         for order in self.orders:
-            if order.status == 'OPEN':
+            if order.status == orderStatus.OPEN:
                 self.__execute(order)
     
     
     def add_order(self, order: Order) -> None:
-        if order.status != 'OPEN':
-            raise Exception(f'Order status must be OPEN, not {order.status}')
+        if order.status != orderStatus.OPEN:
+            raise Exception(f'Order status must be orderStatus.OPEN, instead of {order.status}')
         
         self.orders.append(order)
     
@@ -149,7 +149,6 @@ class Exchange:
         
         fee_rate = self.transaction_fee['FUTURES']['MarketOrder']['TAKER']
         instId = order.inst.instId
-        
         if order.action == orderAction.OPEN:
             if order.side == orderSide.BUYLONG:
                 pos_direct = PosDirection.BUYLONG
@@ -166,8 +165,7 @@ class Exchange:
                 
                 exec_amount = min(order.leftAmount, bl.amount)
                 fee = bl.price * exec_amount * order.inst.contract_size * fee_rate # FIXME: Haven't consider the contract multiplier here
-                margin = bl.price * exec_amount / order.leverage
-                borrow = bl.price * exec_amount - margin # Borrowed amount.
+                margin = bl.price * exec_amount * order.inst.contract_size / order.leverage
                 cost = margin + fee # total cost
                 if cost > self.balance[order.quote_ccy]:
                     order.insufficient()
@@ -216,6 +214,8 @@ class Exchange:
                 self.balance[order.quote_ccy] += return_value - fee
                 
                 order.exe(bl.price, exec_amount, fee)
+        else: 
+            raise Exception(f'Invalid order action: {order.action}')
 
 
     def __hash__(self) -> int:

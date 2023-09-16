@@ -282,8 +282,6 @@ class Books:
     
     def __getitem__(self, instId: str) -> Book:
         # TODO: Use Instrument as key instead of instId
-        if not isinstance(instId, str) or not isinstance(instId, Instrument):
-            raise TypeError("instId must be a string.")
         instId = str(instId)
         if instId not in self._books:
             book_path = os.path.join(self.path, instId)

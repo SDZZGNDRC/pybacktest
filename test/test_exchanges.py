@@ -1,14 +1,15 @@
 from distutils import dir_util
+from math import isclose
 import os
 from pathlib import Path
 import sys
+sys.path.insert(0, sys.path[0]+"/../")
 
 import pytest
 from src.instrument import Instrument, InstType, Pair
 from src.order import Order, orderAction, orderSide, orderStatus, orderType
 from src.positions import PosDirection
 
-sys.path.insert(0, sys.path[0]+"/../")
 from src.simTime import SimTime
 from src.exchanges import Exchange
 
@@ -24,7 +25,7 @@ def datadir(tmp_path, request) -> Path:
 
 @pytest.fixture
 def simTime() -> SimTime:
-    return SimTime(1687423745407, 1687506650903)
+    return SimTime(1689064733703, 1689521002200)
 
 @pytest.fixture
 def exch(datadir: Path, simTime) -> Exchange:
@@ -32,7 +33,8 @@ def exch(datadir: Path, simTime) -> Exchange:
         str(datadir), simTime,
         initial_balance= {
             'USDT': 200
-        }
+        },
+        max_interval=10_000,
         )
 
 
@@ -122,8 +124,9 @@ class TestExchange:
         # fee = 0.1528395
         # repay_margin = 30.5711
         # get_ccy = 30.5711+0.029000000000014552-0.1528395=30.447260500000016
-        assert exch.balance['USDT'] == 199.38561000000004
+        assert isclose(exch.balance['USDT'], 199.38561000000004, rel_tol=1e-5)
         assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 0
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Margin == 0
         assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 0
         assert order.status == orderStatus.CLOSED
         
@@ -147,9 +150,10 @@ class TestExchange:
         # margin = 917.424 / 10 = 91.7424
         # total_cost = 92.201112
         # loan = 917.424 * (1 - 1/10) = 825.6816
-        assert exch.balance['USDT'] == 107.18449800000003
-        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 825.6816
-        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 3
+        assert isclose(exch.balance['USDT'], 107.18449800000003, rel_tol=1e-5)
+        assert isclose(exch.positions[(inst, PosDirection.SELLSHORT, 10)].Loan, 825.6816, rel_tol=1e-5)
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].Margin == 91.7424
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].OPEN_NUM == 3
         assert order.status == orderStatus.CLOSED
         
         simTime.add(600*eval_step)
@@ -170,9 +174,10 @@ class TestExchange:
         # (30580.8*0.01 - 30550.5*0.01)*1 = 0.30299999999999727
         # fee = 0.1527525
         # get_ccy = 30.5808+0.30299999999999727 - 0.1527525 = 30.7310475
-        assert exch.balance['USDT'] == 137.91554550000004
-        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 550.4544
-        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 2
+        assert isclose(exch.balance['USDT'], 137.91554550000004, rel_tol=1e-5)
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].Loan == 550.4544
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].Margin == 61.1616
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].OPEN_NUM == 2
         assert order.status == orderStatus.CLOSED
 
         simTime.add(1440*eval_step)
@@ -192,9 +197,10 @@ class TestExchange:
         # (30580.8*0.01 - 30489.3*0.01)*1 = 0.9150000000000205
         # fee = 0.15244649999999998
         # get_ccy = 30.5808+0.9150000000000205-0.15244649999999998 = 31.34335350000002
-        assert exch.balance['USDT'] == 169.25889900000004
-        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 275.2272
-        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 1
+        assert isclose(exch.balance['USDT'], 169.25889900000004, rel_tol=1e-5)
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].Loan == 275.2272
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].Margin == 30.5808
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].OPEN_NUM == 1
         assert order.status == orderStatus.CLOSED
 
         simTime.add(240*eval_step)
@@ -214,8 +220,9 @@ class TestExchange:
         # (30580.8*0.01 - 30432.3*0.01)*1 = 1.4850000000000136
         # fee = 0.1521615
         # get_ccy = 30.5808+1.4850000000000136-0.1521615 = 31.913638500000012
-        assert exch.balance['USDT'] == 201.17253750000006
-        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 0
-        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 0
+        assert isclose(exch.balance['USDT'], 201.17253750000006, rel_tol=1e-5)
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].Loan == 0
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].Margin == 0
+        assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].OPEN_NUM == 0
         assert order.status == orderStatus.CLOSED
         

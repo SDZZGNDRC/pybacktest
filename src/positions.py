@@ -81,6 +81,8 @@ class Position:
             else:
                 delta_p = self._open_price[cont.uuid] - self._close_price[cont.uuid]
             return_value += self._margin[cont.uuid] + delta_p * self.inst.contract_size * 1
+            del self._loan[cont.uuid]
+            del self._margin[cont.uuid]
         
         if return_value < 0:
             raise ValueError(f'return_value({return_value}) should not be less than 0; When equal to 0, it will be Forced to liquidation')
@@ -115,9 +117,9 @@ class Position:
         if len(self._conts) == 0:
             return PosStatus.OPEN
         elif list(filter(lambda cont: cont.status==ContStatus.OPEN, self._conts)):
-            return PosStatus.CLOSE
-        else:
             return PosStatus.OPEN
+        else:
+            return PosStatus.CLOSE
     
     @property
     def OPEN_NUM(self) -> int:
@@ -182,6 +184,7 @@ class Positions:
         
         if len(target_positions) == 0: # Create the position
             pos = Position(inst, leverage, direct)
+            self._pos.append(pos)
         else:
             pos = target_positions[0]
         if pos.STATUS == PosStatus.CLOSE: # Replace the closed position

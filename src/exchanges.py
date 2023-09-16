@@ -208,12 +208,12 @@ class Exchange:
                     order.insufficient()
                     break
                 
-                net_profit = self.positions.close(
+                return_value = self.positions.close(
                     order.inst, pos_direct, 
                     order.leverage, 
                     bl.price, int(exec_amount)
                 )
-                self.balance[order.quote_ccy] += net_profit - fee
+                self.balance[order.quote_ccy] += return_value - fee
                 
                 order.exe(bl.price, exec_amount, fee)
 

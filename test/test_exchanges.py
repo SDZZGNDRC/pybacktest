@@ -6,6 +6,7 @@ import sys
 import pytest
 from src.instrument import Instrument, InstType, Pair
 from src.order import Order, orderAction, orderSide, orderStatus, orderType
+from src.positions import PosDirection
 
 sys.path.insert(0, sys.path[0]+"/../")
 from src.simTime import SimTime
@@ -70,10 +71,11 @@ class TestExchange:
         # fee = 0.305711
         # margin = 611.422 / 10 = 61.1422
         # total_cost = 61.447911000000005
-        # borrow = 611.422 * (1 - 1/10) = 550.2798
+        # loan = 611.422 * (1 - 1/10) = 550.2798
         assert exch.balance['USDT'] == 138.552089
-        assert exch.borrow['USDT'] == 550.2798
-        assert len(exch.contracts) == 2
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 550.2798
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Margin == 61.1422
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 2
         assert order.status == orderStatus.CLOSED
         
         simTime.add(3*eval_step)
@@ -91,12 +93,14 @@ class TestExchange:
         
         # close long(sell)
         # best bid should be (price=30567.9, amount=13.0)
-        # 30567.9*0.01*1 = 305.679
+        # (30567.9-30571.1)*0.01*1 = -0.0319999999999709
         # fee = 0.1528395
-        # repay = 305.679
-        assert exch.balance['USDT'] == 138.552089
-        assert exch.borrow['USDT'] == 244.6008
-        assert len(exch.contracts) == 1
+        # repay_margin = 30.5711
+        # get_ccy = 30.5711-0.0319999999999709-0.1528395
+        assert exch.balance['USDT'] == 168.93834950000002
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 275.1399
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Margin == 30.5711
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 1
         assert order.status == orderStatus.CLOSED
         
         simTime.add(240*eval_step)
@@ -114,20 +118,20 @@ class TestExchange:
 
         # close long(sell)
         # best bid should be (price=30574.0, amount=17.0)
-        # 30574.0*0.01*1 = 305.74
-        # fee = 0.15287
-        # repay = 244.6008
-        # get_ccy = 61.1392
-        assert exch.balance['USDT'] == 199.691289
-        assert exch.borrow['USDT'] == 0
-        assert len(exch.contracts) == 0
+        # (30574.0-30571.1)*0.01*1 = 0.029000000000014552
+        # fee = 0.1528395
+        # repay_margin = 30.5711
+        # get_ccy = 30.5711+0.029000000000014552-0.1528395=30.447260500000016
+        assert exch.balance['USDT'] == 199.38561000000004
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 0
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 0
         assert order.status == orderStatus.CLOSED
         
         simTime.add(120*eval_step)
         order = Order(
             inst,
             orderType.MARKET,
-            orderSide.SHORT,
+            orderSide.SELLSHORT,
             simTime,
             3,
             leverage=10,
@@ -142,17 +146,17 @@ class TestExchange:
         # fee = 0.458712
         # margin = 917.424 / 10 = 91.7424
         # total_cost = 92.201112
-        # borrow = 917.424 * (1 - 1/10) = 825.6816
-        assert exch.balance['USDT'] == 107.49017700000002
-        assert exch.borrow['USDT'] == 825.6816
-        assert len(exch.contracts) == 3
+        # loan = 917.424 * (1 - 1/10) = 825.6816
+        assert exch.balance['USDT'] == 107.18449800000003
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 825.6816
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 3
         assert order.status == orderStatus.CLOSED
         
         simTime.add(600*eval_step)
         order = Order(
             inst,
             orderType.MARKET,
-            orderSide.SHORT,
+            orderSide.SELLSHORT,
             simTime,
             1,
             leverage=10,
@@ -163,20 +167,19 @@ class TestExchange:
 
         # close short(buy)
         # best ask should be (price=30550.5, amount=7.0)
-        # 30550.5*0.01*1 = 305.505
+        # (30580.8*0.01 - 30550.5*0.01)*1 = 0.30299999999999727
         # fee = 0.1527525
-        # repay = 305.505
-        # get_ccy = 0
-        assert exch.balance['USDT'] == 107.49017700000002
-        assert exch.borrow['USDT'] == 520.1766
-        assert len(exch.contracts) == 2
+        # get_ccy = 30.5808+0.30299999999999727 - 0.1527525 = 30.7310475
+        assert exch.balance['USDT'] == 137.91554550000004
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 550.4544
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 2
         assert order.status == orderStatus.CLOSED
 
         simTime.add(1440*eval_step)
         order = Order(
             inst,
             orderType.MARKET,
-            orderSide.SHORT,
+            orderSide.SELLSHORT,
             simTime,
             1,
             leverage=10,
@@ -186,20 +189,19 @@ class TestExchange:
         exch.eval()
 
         # best ask should be (price=30489.3, amount=7.0)
-        # 30489.3*0.01*1 = 304.893
+        # (30580.8*0.01 - 30489.3*0.01)*1 = 0.9150000000000205
         # fee = 0.15244649999999998
-        # repay = 304.893
-        # get_ccy = 0
-        assert exch.balance['USDT'] == 107.49017700000002
-        assert exch.borrow['USDT'] == 215.28360000000004
-        assert len(exch.contracts) == 1
+        # get_ccy = 30.5808+0.9150000000000205-0.15244649999999998 = 31.34335350000002
+        assert exch.balance['USDT'] == 169.25889900000004
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 275.2272
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 1
         assert order.status == orderStatus.CLOSED
 
         simTime.add(240*eval_step)
         order = Order(
             inst,
             orderType.MARKET,
-            orderSide.SHORT,
+            orderSide.SELLSHORT,
             simTime,
             1,
             leverage=10,
@@ -209,14 +211,11 @@ class TestExchange:
         exch.eval()
 
         # best ask should be (price=30432.3, amount=7.0)
-        # 30432.3*0.01*1 = 304.323
+        # (30580.8*0.01 - 30432.3*0.01)*1 = 1.4850000000000136
         # fee = 0.1521615
-        # repay = 215.28360000000004
-        # get_ccy = 89.03939999999994
-        assert exch.balance['USDT'] == 196.52957699999996
-        assert exch.borrow['USDT'] == 215.28360000000004
-        assert len(exch.contracts) == 0
+        # get_ccy = 30.5808+1.4850000000000136-0.1521615 = 31.913638500000012
+        assert exch.balance['USDT'] == 201.17253750000006
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].Loan == 0
+        assert exch.positions[(inst, PosDirection.BUYLONG, 10)].OPEN_NUM == 0
         assert order.status == orderStatus.CLOSED
-
         
-        raise NotImplementedError

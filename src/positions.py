@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from enum import Enum
 from uuid import UUID
 
@@ -58,7 +58,7 @@ class Position:
 
     def close(self, close_price: float, close_num: int) -> float:
         # TODO: remove closed conts
-        net_profit = 0.0
+        return_value = 0.0
         
         if self.STATUS == PosStatus.CLOSE:
             raise Exception("Can not call a closed position.")
@@ -80,11 +80,11 @@ class Position:
                 delta_p = self._close_price[cont.uuid] - self._open_price[cont.uuid]
             else:
                 delta_p = self._open_price[cont.uuid] - self._close_price[cont.uuid]
-            net_profit += self._margin[cont.uuid] + delta_p * self.inst.contract_size * 1
+            return_value += self._margin[cont.uuid] + delta_p * self.inst.contract_size * 1
         
-        if net_profit < 0:
-            raise ValueError(f'net_profit({net_profit}) should not be less than 0; When equal to 0, it will be Forced to liquidation')
-        return net_profit
+        if return_value < 0:
+            raise ValueError(f'return_value({return_value}) should not be less than 0; When equal to 0, it will be Forced to liquidation')
+        return return_value
 
     def as_dict(self) -> dict:
         return {
@@ -134,6 +134,16 @@ class Position:
         if self.STATUS != PosStatus.CLOSE:
             raise Exception("Only closed position have ACP.")
         return sum([self._close_price[cont.uuid] for cont in self._conts])/len(self._conts)
+    
+    # Total loan of the position
+    @property
+    def Loan(self) -> float:
+        return sum([v for v in self._loan.values()])
+    
+    # Total margin of the position
+    @property
+    def Margin(self) -> float:
+        return sum([v for v in self._margin.values()])
     
     def __eq__(self, other) -> bool:
         if isinstance(other, Position) and \
@@ -202,9 +212,13 @@ class Positions:
               leverage: int, 
               price: float, 
               num: int) -> float:
-        net_profit = self.__get(inst, direct, leverage).close(price, num)
+        return_value = self.__get(inst, direct, leverage).close(price, num)
         self.__clear()
-        return net_profit
+        return return_value
+
+
+    def __getitem__(self, key: Tuple[Instrument, PosDirection, int]) -> Position:
+        return self.__get(key[0], key[1], key[2])
 
 
     def __hash__(self) -> int:

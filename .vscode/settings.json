@@ -6,12 +6,16 @@
         "datadir",
         "getitem",
         "iloc",
+        "indexprices",
         "insts",
         "iterrows",
         "MACD",
         "marketdata",
+        "markprices",
         "metabacktest",
-        "SELLSHORT"
+        "PAVG",
+        "SELLSHORT",
+        "uprofit"
     ],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.typeCheckingMode": "basic",

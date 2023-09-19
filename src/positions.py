@@ -1,9 +1,12 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Literal, Tuple
 from enum import Enum
 from uuid import UUID
 
 from src.contract import ContStatus, Contract, ContRole
 from src.instrument import Instrument
+from src.marketdata import MarketData
+from src.markprices import MarkPrice
+from src.order import Order, orderSide
 
 class PosDirection(Enum):
     BUYLONG = 'BUYLONG'
@@ -22,19 +25,30 @@ class Position:
                 inst: Instrument, 
                 leverage: int,
                 direction: PosDirection,
+                marketData: MarketData,
+                mmr: float,
+                fee_rate: float,
                 ) -> None:
+        
+        # NOTICE: ONLY support USDT(C)-based futures trading so far.
+        if inst.quote_ccy not in ['USDT', 'USDC']:
+            raise Exception('ONLY support USDT(C)-based futures trading so far')
         
         self._inst = inst
         if leverage <= 0:
             raise ValueError("Leverage must be greater than zero.")
         self._leverage = leverage
         self._direct = direction
+        self._marketData = marketData
+        self._mmr = mmr
+        self._fee_rate = fee_rate
         
         self._conts: List[Contract] = []
         self._margin: Dict[UUID, float] = {}
         self._loan: Dict[UUID, float] = {}
         self._open_price: Dict[UUID, float] = {}
         self._close_price: Dict[UUID, float] = {}
+
 
     def open(self, entry_price: float, entry_num: int):
         if self.STATUS == PosStatus.CLOSE:
@@ -55,6 +69,32 @@ class Position:
             self._margin[cont.uuid] = margin
             self._loan[cont.uuid] = loan
         self._conts.extend(new_conts)
+
+
+    def profit(self, base: Literal['Mark', 'Commission'] = 'Mark') -> float:
+        raise NotImplementedError
+
+
+    # Unrealized Profit
+    def UProfit(self, base: Literal['Mark', 'Commission'] = 'Mark') -> float:
+        if base == 'Mark': # Use MarkPrice to calculate the unrealized profit
+            mkPx: MarkPrice = self._marketData['markprices'] # type: ignore
+            opened_conts = list(filter(lambda cont: cont.status==ContStatus.OPEN, self._conts))
+            opened_AOP = sum([self._open_price[cont.uuid] for cont in opened_conts])/len(opened_conts)
+            if self._direct == PosDirection.BUYLONG:
+                delta = mkPx - opened_AOP
+            elif self._direct == PosDirection.SELLSHORT:
+                delta = opened_AOP - mkPx
+            else:
+                raise ValueError(f'Unknown position direction {self._direct}')
+            uProfit = self.inst.contract_size * len(opened_conts) * 1 * delta
+        elif base == 'Commission':
+            raise NotImplementedError
+        else:
+            raise ValueError(f'Unknown base: {base}')
+
+        return uProfit
+
 
     def close(self, close_price: float, close_num: int) -> float:
         # TODO: remove closed conts
@@ -81,12 +121,13 @@ class Position:
             else:
                 delta_p = self._open_price[cont.uuid] - self._close_price[cont.uuid]
             return_value += self._margin[cont.uuid] + delta_p * self.inst.contract_size * 1
-            del self._loan[cont.uuid]
+            del self._loan[cont.uuid] # Repay the loan.
             del self._margin[cont.uuid]
         
         if return_value < 0:
             raise ValueError(f'return_value({return_value}) should not be less than 0; When equal to 0, it will be Forced to liquidation')
         return return_value
+
 
     def as_dict(self) -> dict:
         return {
@@ -100,18 +141,22 @@ class Position:
             'close_price': self._close_price,
         }
 
+
     @property
     def inst(self) -> Instrument:
         return self._inst
 
+
     @property
     def leverage(self) -> int:
         return self._leverage
-    
+
+
     @property
     def direct(self) -> PosDirection:
         return self._direct
-    
+
+
     @property
     def STATUS(self) -> PosStatus:
         if len(self._conts) == 0:
@@ -120,45 +165,68 @@ class Position:
             return PosStatus.OPEN
         else:
             return PosStatus.CLOSE
-    
+
+
     @property
     def OPEN_NUM(self) -> int:
         return len([cont for cont in self._conts if cont.status == ContStatus.OPEN])
-    
+
+
     # Average Open Price
     @property
     def AOP(self) -> float:
         return sum([self._open_price[cont.uuid] for cont in self._conts])/len(self._conts)
-    
+
+
     # Average Close Price
     @property
     def ACP(self) -> float:
         if self.STATUS != PosStatus.CLOSE:
             raise Exception("Only closed position have ACP.")
         return sum([self._close_price[cont.uuid] for cont in self._conts])/len(self._conts)
-    
+
+
     # Total loan of the position
     @property
     def Loan(self) -> float:
         return sum([v for v in self._loan.values()])
-    
+
+
     # Total margin of the position
     @property
     def Margin(self) -> float:
         return sum([v for v in self._margin.values()])
-    
+
+
+    @property
+    def MarginRate(self) -> float:
+        markPrice: MarkPrice = self._marketData['markprices'][self.inst] # type: ignore
+        rate = self._mmr+self._fee_rate
+        return (self.Margin+self.UProfit())/(self.inst.contract_size*self.OPEN_NUM*markPrice*rate)
+
+
     def __eq__(self, other) -> bool:
         if isinstance(other, Position) and \
             self._inst == other._inst and \
                 self._direct == other._direct and \
                     self._leverage == other._leverage:
                         return True
+        elif isinstance(other, Order) and \
+            self._inst == other.inst and \
+                self.leverage == other.leverage and \
+                    (self.direct, other.side) in [
+                        (PosDirection.BUYLONG, orderSide.BUYLONG), 
+                        (PosDirection.SELLSHORT, orderSide.SELLSHORT),
+                    ]:
+                        return True
         else:
             return False
-    
+
+
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
-    
+
+
     def __hash__(self) -> int:
         return hash((self.inst, self.leverage, self.direct, self._conts, self._margin))
 
@@ -166,8 +234,15 @@ class Position:
 
 class Positions:
     
-    def __init__(self) -> None:
+    def __init__(self,
+                 maintain_margin_rate: float,
+                 fee_rate: float,
+                 marketData: MarketData,
+                 ) -> None:
         self._pos: List[Position] = []
+        self._mmr = maintain_margin_rate
+        self._fr = fee_rate
+        self._marketData = marketData
 
 
     def __get(self,
@@ -183,13 +258,13 @@ class Positions:
             raise Exception(f'There are {len(target_positions)} positions for the same instrument and direction')
         
         if len(target_positions) == 0: # Create the position
-            pos = Position(inst, leverage, direct)
+            pos = Position(inst, leverage, direct, self._marketData, self._mmr, self._fr)
             self._pos.append(pos)
         else:
             pos = target_positions[0]
         if pos.STATUS == PosStatus.CLOSE: # Replace the closed position
             self._pos.remove(pos)
-            pos = Position(inst, leverage, direct)
+            pos = Position(inst, leverage, direct, self._marketData, self._mmr, self._fr)
             self._pos.append(pos)
         
         return pos
@@ -199,6 +274,7 @@ class Positions:
         for pos in self._pos:
             if pos.STATUS == PosStatus.CLOSE:
                 self._pos.remove(pos)
+
 
     def open(self, 
              inst: Instrument, 

@@ -197,6 +197,7 @@ class Book:
             self.chunked_data = pd.read_parquet(self.index_files[self.current_index])
             
             # ensure the `action` field is correct in the first row
+            # NOTICE: MUST ensure that each chunked data file have a snapshot at the beginning.
             if self.chunked_data.iloc[0]['action'] != 'snapshot':
                 raise Exception('The first row of the chunked data must be a snapshot.')
             
@@ -267,8 +268,9 @@ class Book:
             raise Exception(f'Invalid side: {side}')
 
 
+
 class Books:
-    def __init__(self, path: str, simTime: SimTime, max_interval: int = 2000) -> None:
+    def __init__(self, path: str, simTime: SimTime, max_interval: int = 10000) -> None:
         self.path = path
         self.simTime = simTime
         self.max_interval = max_interval
@@ -280,12 +282,10 @@ class Books:
         return len(self._books)
     
     
-    def __getitem__(self, instId: str) -> Book:
-        # TODO: Use Instrument as key instead of instId
-        instId = str(instId)
+    def __getitem__(self, inst: Instrument) -> Book:
+        instId = inst.instId
         if instId not in self._books:
             book_path = os.path.join(self.path, instId)
             self._books[instId] = Book(instId, self.simTime, book_path, self.max_interval)
         
         return self._books[instId]
-    

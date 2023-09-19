@@ -1,6 +1,8 @@
 
-from typing import Dict, List
-from src.contract import ContRole
+from pathlib import Path
+from typing import Dict, List, Literal
+from src.IdxPrice import IdxPrices
+from src.books import Books
 from src.instrument import InstType
 from src.marketdata import MarketData
 from src.order import Order, orderAction, orderSide, orderStatus, orderType
@@ -43,12 +45,11 @@ class Balance:
 
 
 class Exchange:
-    def __init__(self, data_path: str, simTime: SimTime, initial_balance: Dict[str, float] = {'USDT': 100, 'USDC': 100}, max_interval: int = 2000) -> None:
+    def __init__(self, data_path: Path, simTime: SimTime, initial_balance: Dict[str, float] = {'USDT': 100, 'USDC': 100}, max_interval: int = 2000) -> None:
         self.simTime = simTime
         self.marketData = MarketData(simTime, data_path, max_interval)
         self.orders: List[Order] = []
         self.balance: Balance = Balance(initial_balance)
-        self.positions: Positions = Positions()
         
         self.transaction_fee = {
             'SPOT': {
@@ -64,25 +65,76 @@ class Exchange:
                 }
             },
         }
-    
+        self.delivery_fee_rate = 0.0001
+        self.mmr = 0.004
+        self.positions: Positions = Positions(
+            self.mmr, 
+            self.transaction_fee['FUTURES']['MarketOrder']['TAKER'], 
+            self.marketData,
+        )
     
     def eval(self) -> None:
-        # TODO: Should try to make delivery of the contracts.
         # TODO: Should simulate the delay of network.
-        if len(self.orders) == 0:
-            return
         
+        self.liquidation()
+        self.delivery()
+        
+        # execute orders
         for order in self.orders:
             if order.status == orderStatus.OPEN:
                 self.__execute(order)
-    
-    
+
+
+    def liquidation(self) -> None:
+        for pos in self.positions:
+            if pos.MarginRate <= 1.0:
+                if pos.direct == PosDirection.BUYLONG:
+                    order_side = orderSide.BUYLONG
+                else:
+                    order_side = orderSide.SELLSHORT
+                liquidate_order = Order(
+                    pos.inst,
+                    orderType.MARKET,
+                    order_side,
+                    self.simTime,
+                    pos.OPEN_NUM,
+                    leverage=pos.leverage,
+                    action=orderAction.CLOSE
+                )
+                self.__execute(liquidate_order)
+
+
+    def delivery(self, base: Literal['IndexPrice', 'TradePrice'] = 'IndexPrice') -> None:
+        # NOTICE: Due to the lack of IndexPrice for most cases, 
+        #         TradePrice is introduced as a substitute for the delivery price.
+
+        if base == 'IndexPrice':
+            basePxs: IdxPrices = self.marketData['indexprices'] # type: ignore
+        else:
+            raise NotImplementedError
+        opened_orders = [
+            order for order in self.orders if order.status == orderStatus.OPEN
+        ]
+        for pos in self.positions:
+            if pos.inst.end_ts <= self.simTime:
+                fee = basePxs[pos.inst].now*pos.OPEN_NUM* \
+                    pos.inst.contract_size*self.delivery_fee_rate
+                self.balance[pos.inst.quote_ccy] += pos.close(basePxs[pos.inst].now, pos.OPEN_NUM)
+                self.balance[pos.inst.quote_ccy] -= fee
+
+                # Remove all Unfulfilled orders.
+                for order in opened_orders:
+                    if order == pos:
+                        self.orders.remove(order)
+
+
     def add_order(self, order: Order) -> None:
         if order.status != orderStatus.OPEN:
             raise Exception(f'Order status must be orderStatus.OPEN, instead of {order.status}')
         
         self.orders.append(order)
-    
+
+
     def __execute(self, order: Order):
         if order.orderType == orderType.LIMIT:
             self.__execute_limit_order(order)
@@ -90,12 +142,12 @@ class Exchange:
             self.__execute_market_order(order)
         else:
             raise Exception(f'Unsupported order type: {order.orderType}')
-    
-    
+
+
     def __execute_limit_order(self, order: Order):
         raise NotImplementedError()
-    
-    
+
+
     def __execute_market_order(self, order: Order):
         if order.inst.type == InstType.SPOT:
             self.__execute_market_order_spot(order)
@@ -107,13 +159,15 @@ class Exchange:
             raise NotImplementedError()
         else:
             raise Exception(f'Unsupported instrument type: {order.inst.type}')
-        
+
 
     def __execute_market_order_spot(self, order: Order):
         fee_rate = self.transaction_fee['SPOT']['MarketOrder']['TAKER']
         instId = str(order.inst.instId)
+        inst = order.inst
+        books: Books = self.marketData['books'] # type: ignore
         if order.side == orderSide.BUYLONG:
-            for bl in self.marketData['books'][instId]['ask']:
+            for bl in books[inst]['ask']:
                 if order.leftAmount == 0:
                     break
                 
@@ -128,7 +182,7 @@ class Exchange:
                 self.balance[order.base_ccy] += exec_amount * (1 - fee_rate)
                 order.exe(bl.price, exec_amount, exec_amount * fee_rate)
         elif order.side == orderSide.SELLSHORT:
-            for bl in self.marketData['books'][instId]['bid']:
+            for bl in books[inst]['bid']:
                 if order.leftAmount == 0:
                     break
                 exec_amount = min(order.leftAmount, bl.amount)
@@ -143,19 +197,22 @@ class Exchange:
                 order.exe(bl.price, exec_amount, get_amount * fee_rate)
         else:
             raise Exception(f'Unsupported order side: {order.side}')
-    
+
+
+
     def __execute_market_order_futures(self, order: Order):
         # NOTICE: ONLY support `USDT/USDC Contracts`.
         
         fee_rate = self.transaction_fee['FUTURES']['MarketOrder']['TAKER']
-        instId = order.inst.instId
+        inst = order.inst
+        books: Books = self.marketData['books'] # type: ignore
         if order.action == orderAction.OPEN:
             if order.side == orderSide.BUYLONG:
                 pos_direct = PosDirection.BUYLONG
-                bls = self.marketData['books'][instId]['ask'] # open long(buy) -> ask
+                bls = books[inst]['ask'] # open long(buy) -> ask
             elif order.side == orderSide.SELLSHORT:
                 pos_direct = PosDirection.SELLSHORT
-                bls = self.marketData['books'][instId]['bid'] # open short(sell) -> bid
+                bls = books[inst]['bid'] # open short(sell) -> bid
             else:
                 raise Exception(f'Unsupported order side: {order.side}')
             
@@ -185,10 +242,10 @@ class Exchange:
             
             if order.side == orderSide.BUYLONG:
                 pos_direct = PosDirection.BUYLONG
-                bls = self.marketData['books'][instId]['bid'] # close long(sell) -> bid
+                bls = books[inst]['bid'] # close long(sell) -> bid
             elif order.side == orderSide.SELLSHORT:
                 pos_direct = PosDirection.SELLSHORT
-                bls = self.marketData['books'][instId]['ask'] # close short(buy) -> aks
+                bls = books[inst]['ask'] # close short(buy) -> aks
             else:
                 raise Exception(f'Unsupported order side: {order.side}')
             

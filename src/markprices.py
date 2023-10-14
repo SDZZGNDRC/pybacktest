@@ -1,4 +1,3 @@
-
 import glob
 import os
 from pathlib import Path
@@ -19,7 +18,7 @@ class MarkPrice:
         # initialize the index
         self.index_files: List[str] = glob.glob(os.path.join(self.path, 'part-*-*-*.parquet'))
         if len(self.index_files) == 0:
-            raise Exception('No index files found.')
+            raise Exception(f'No index files found in {path}')
         self.index_timePeriods: List[Tuple[int, int]] = []
         for file in self.index_files:
             start, end = os.path.splitext(os.path.basename(file))[0].split('-')[2:]

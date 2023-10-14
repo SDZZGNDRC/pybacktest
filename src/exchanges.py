@@ -1,12 +1,14 @@
 
 from pathlib import Path
 from typing import Dict, List, Literal
+
+from loguru import logger
 from src.IdxPrice import IdxPrices
 from src.books import Books
 from src.instrument import InstType
 from src.marketdata import MarketData
 from src.order import Order, orderAction, orderSide, orderStatus, orderType
-from src.positions import PosDirection, Positions
+from src.positions import PosDirection, PosStatus, Positions
 from src.simTime import SimTime
 
 class Balance:
@@ -86,12 +88,14 @@ class Exchange:
 
 
     def liquidation(self) -> None:
-        for pos in self.positions:
+        for pos in filter(lambda pos: pos.STATUS == PosStatus.OPEN, self.positions):
             if pos.MarginRate <= 1.0:
+                logger.debug(f'[{self.simTime}] Occurred liquidation at {pos.inst}')
                 if pos.direct == PosDirection.BUYLONG:
                     order_side = orderSide.BUYLONG
                 else:
                     order_side = orderSide.SELLSHORT
+                
                 liquidate_order = Order(
                     pos.inst,
                     orderType.MARKET,
@@ -117,6 +121,7 @@ class Exchange:
         ]
         for pos in self.positions:
             if pos.inst.end_ts <= self.simTime:
+                logger.debug(f'[{self.simTime}] Occurred delivery at {pos.inst}')
                 fee = basePxs[pos.inst].now*pos.OPEN_NUM* \
                     pos.inst.contract_size*self.delivery_fee_rate
                 self.balance[pos.inst.quote_ccy] += pos.close(basePxs[pos.inst].now, pos.OPEN_NUM)

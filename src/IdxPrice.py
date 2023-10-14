@@ -121,7 +121,7 @@ class IdxPrice:
 
     def __rmul__(self, other) -> float:
         self.update()
-        return float(other) / self._idxPx
+        return float(other) * self._idxPx
 
 
     def __truediv__(self, other) -> float:

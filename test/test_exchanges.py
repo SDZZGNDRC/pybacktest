@@ -30,7 +30,7 @@ def simTime() -> SimTime:
 @pytest.fixture
 def exch(datadir: Path, simTime) -> Exchange:
     return Exchange(
-        str(datadir), simTime,
+        datadir, simTime,
         initial_balance= {
             'USDT': 200
         },

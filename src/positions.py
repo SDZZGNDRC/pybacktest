@@ -1,9 +1,12 @@
-from typing import Dict, List, Literal, Tuple
+from typing import Dict, List, Literal, Tuple, Union
 from enum import Enum
 from uuid import UUID
 
+from loguru import logger
+
 from src.contract import ContStatus, Contract, ContRole
 from src.instrument import Instrument
+from src.mabidask import mabidask
 from src.marketdata import MarketData
 from src.markprices import MarkPrice
 from src.order import Order, orderSide
@@ -17,6 +20,7 @@ class PosAction(Enum):
     CLOSE = 'CLOSE'
 
 class PosStatus(Enum):
+    INIT = 'INIT'
     OPEN = 'OPEN'
     CLOSE = 'CLOSE'
 
@@ -39,7 +43,13 @@ class Position:
             raise ValueError("Leverage must be greater than zero.")
         self._leverage = leverage
         self._direct = direction
-        self._marketData = marketData
+        # self._marketData = marketData
+        try:
+            self._mkPx = marketData['markprices'][inst]
+        except Exception as e:
+            if 'No index files found' in str(e):
+                logger.debug(f'No data files for markprice {inst}, use mabidask instead')
+                self._mkPx = marketData['mabidasks'][inst]
         self._mmr = mmr
         self._fee_rate = fee_rate
         
@@ -78,7 +88,7 @@ class Position:
     # Unrealized Profit
     def UProfit(self, base: Literal['Mark', 'Commission'] = 'Mark') -> float:
         if base == 'Mark': # Use MarkPrice to calculate the unrealized profit
-            mkPx: MarkPrice = self._marketData['markprices'] # type: ignore
+            mkPx: Union[MarkPrice, mabidask] = self._mkPx # type: ignore
             opened_conts = list(filter(lambda cont: cont.status==ContStatus.OPEN, self._conts))
             opened_AOP = sum([self._open_price[cont.uuid] for cont in opened_conts])/len(opened_conts)
             if self._direct == PosDirection.BUYLONG:
@@ -160,7 +170,7 @@ class Position:
     @property
     def STATUS(self) -> PosStatus:
         if len(self._conts) == 0:
-            return PosStatus.OPEN
+            return PosStatus.INIT
         elif list(filter(lambda cont: cont.status==ContStatus.OPEN, self._conts)):
             return PosStatus.OPEN
         else:
@@ -200,9 +210,9 @@ class Position:
 
     @property
     def MarginRate(self) -> float:
-        markPrice: MarkPrice = self._marketData['markprices'][self.inst] # type: ignore
+        mkPx: Union[MarkPrice, mabidask] = self._mkPx # type: ignore
         rate = self._mmr+self._fee_rate
-        return (self.Margin+self.UProfit())/(self.inst.contract_size*self.OPEN_NUM*markPrice*rate)
+        return (self.Margin+self.UProfit())/(self.inst.contract_size*self.OPEN_NUM*mkPx*rate)
 
 
     def __eq__(self, other) -> bool:
@@ -243,6 +253,8 @@ class Positions:
         self._mmr = maintain_margin_rate
         self._fr = fee_rate
         self._marketData = marketData
+        
+        self.iter_index = 0
 
 
     def __get(self,
@@ -303,6 +315,18 @@ class Positions:
     def __hash__(self) -> int:
         return hash(tuple(self._pos))
 
+
+    def __iter__(self):
+        self.iter_index = 0
+        return self
+
+
+    def __next__(self) -> Position:
+        if self.iter_index >= len(self._pos):
+            raise StopIteration
+        value = self._pos[self.iter_index]
+        self.iter_index += 1
+        return value
 
     def as_dict(self) -> list:
         return [pos.as_dict() for pos in self._pos]

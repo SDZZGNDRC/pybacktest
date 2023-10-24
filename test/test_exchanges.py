@@ -40,6 +40,7 @@ def exch(datadir: Path, simTime) -> Exchange:
 
 class TestExchange:
     
+    # test basic functions
     def test_case1(self, exch: Exchange, simTime: SimTime) -> None:
         eval_step = 1000
         
@@ -225,4 +226,7 @@ class TestExchange:
         assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].Margin == 0
         assert exch.positions[(inst, PosDirection.SELLSHORT, 10)].OPEN_NUM == 0
         assert order.status == orderStatus.CLOSED
-        
+
+    # test liquidation mechanism
+    def test_case2(self, exch: Exchange, simTime: SimTime) -> None:
+        raise NotImplementedError

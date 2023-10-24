@@ -15,14 +15,20 @@ class PosDirection(Enum):
     BUYLONG = 'BUYLONG'
     SELLSHORT = 'SELLSHORT'
 
+
+
 class PosAction(Enum):
     OPEN = 'OPEN'
     CLOSE = 'CLOSE'
+
+
 
 class PosStatus(Enum):
     INIT = 'INIT'
     OPEN = 'OPEN'
     CLOSE = 'CLOSE'
+
+
 
 class Position:
     def __init__(self,

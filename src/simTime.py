@@ -33,6 +33,12 @@ class SimTime:
     def __int__(self) -> int:
         return self.__ts
 
+    def __add__(self, other):
+        return self.__ts+int(other)
+
+    def __sub__(self, other):
+        return self.__ts-int(other)
+
     def __float__(self) -> float:
         return float(self.__ts)
     

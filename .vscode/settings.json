@@ -1,9 +1,11 @@
 {
     "cSpell.words": [
+        "bookcore",
         "BTCUSD",
         "BUYLONG",
         "conts",
         "datadir",
+        "DTYPES",
         "getitem",
         "iloc",
         "indexprices",
@@ -17,6 +19,7 @@
         "markprices",
         "metabacktest",
         "PAVG",
+        "pybacktest",
         "SELLSHORT",
         "uprofit"
     ],
@@ -41,5 +44,8 @@
         "titleBar.inactiveBackground": "#42b88399",
         "titleBar.inactiveForeground": "#15202b99"
     },
-    "peacock.color": "#42b883"
+    "peacock.color": "#42b883",
+    "python.analysis.extraPaths": [
+        "D:\\Project"
+    ]
 }

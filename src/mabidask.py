@@ -8,7 +8,7 @@ from typing import Deque, Dict, List, Tuple
 import pandas as pd
 from src.instrument import Instrument
 from src.simTime import SimTime
-from books import Asks, Bids
+from src.books import Asks, Bids
 
 
 class mabidask:

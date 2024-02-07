@@ -163,4 +163,3 @@ out/*
 .VSCodeCounter/*
 *.json
 !.vscode
-*.parquet

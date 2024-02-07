@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional
 import uuid
 
-from simTime import SimTime
+from src.simTime import SimTime
 from src.instrument import Instrument
 
 class orderType(Enum):

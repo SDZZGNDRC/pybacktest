@@ -12,13 +12,17 @@ from books import Asks, Bids
 
 
 class mabidask:
-    def __init__(self, instId: str, simTime: SimTime, path: Path, window: int = 100, max_interval: int = 2000) -> None:
+    def __init__(self, instId: str, simTime: SimTime, path: Path, window: int = 1, max_interval: int = 2000) -> None:
         self.instId = instId
         self.simTime = simTime
         self.path = path
         self.window = window
         self._hist: Deque[float] = deque(maxlen=window)
         self.max_interval = max_interval
+        
+        if window > 1: 
+            # ! NOTICE: There is a bug where the `window` parameter is bigger than 1. 
+            raise Exception('The window parameter is not supported yet.')
         
         # initialize the index
         self.index_files: List[str] = glob.glob(str(self.path/'part-*-*-*.parquet'))
@@ -43,7 +47,7 @@ class mabidask:
 
     def _update_index(self) -> bool:
         for i, (start, end) in enumerate(self.index_timePeriods):
-            if self.simTime >= start and self.simTime <= end:
+            if start <= self.simTime <= end:
                 if self.current_index != i:
                     self.current_index = i
                     return True
@@ -96,11 +100,11 @@ class mabidask:
                 raise Exception(f'The time interval between two consecutive rows {(row["timestamp"], self.current_ts)} exceeds the maximum interval.')
             
             self.__set(row)
-            if row['timestamp'] != self.current_ts:
+            if row['timestamp'] != self.current_ts and len(self._asks)!=0 and len(self._bids)!=0:
                 self.current_ts = row['timestamp']
                 self._hist.append((self._asks[0].price + self._bids[0].price) / 2)
             self.chunked_index += 1
-        
+        self._hist.append((self._asks[0].price + self._bids[0].price) / 2)
         self.current_ts = int(self.simTime)
 
 

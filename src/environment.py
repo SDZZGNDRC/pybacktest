@@ -1,4 +1,5 @@
 
+from pathlib import Path
 from typing import Dict
 from src.exchanges import Exchange
 from src.simTime import SimTime
@@ -11,9 +12,9 @@ class Environment:
         self.exchanges: Dict[str, Exchange] = {}
         self.max_interval = max_interval
         if 'OKX' in initial_balance:
-            self.exchanges['OKX'] = Exchange(path, simTime, initial_balance=initial_balance['OKX'], max_interval=max_interval)
+            self.exchanges['OKX'] = Exchange(Path(path), simTime, initial_balance=initial_balance['OKX'], max_interval=max_interval)
         else:
-            self.exchanges['OKX'] = Exchange(path, simTime, max_interval=max_interval)
+            self.exchanges['OKX'] = Exchange(Path(path), simTime, max_interval=max_interval)
     
     
     def __getitem__(self, _info):

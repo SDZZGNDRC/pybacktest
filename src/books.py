@@ -36,7 +36,7 @@ class Book:
 
     def _update_index(self) -> bool:
         for i, (start, end) in enumerate(self.index_timePeriods):
-            if self.simTime >= start and self.simTime <= end:
+            if start <= self.simTime <= end:
                 if self.current_index != i:
                     self.current_index = i
                     return True
@@ -85,7 +85,8 @@ class Book:
                 break
 
             if abs(row['timestamp'] - self.current_ts) > self.max_interval and self.current_ts != -1:
-                raise Exception(f'The time interval between two consecutive rows {(row["timestamp"], self.current_ts)} exceeds the maximum interval.')
+                time_interval = abs(row['timestamp'] - self.current_ts)
+                raise Exception(f'The time interval {time_interval} between two consecutive rows {(self.current_ts, row["timestamp"])} exceeds the maximum interval {self.max_interval}.')
             
             self._core.set(dict(row))
             if row['timestamp'] != self.current_ts:

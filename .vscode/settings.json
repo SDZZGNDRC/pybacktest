@@ -21,6 +21,7 @@
         "PAVG",
         "pybacktest",
         "SELLSHORT",
+        "TWEEK",
         "uprofit"
     ],
     "python.analysis.autoImportCompletions": true,

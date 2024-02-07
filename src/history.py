@@ -1,5 +1,5 @@
 import json
-from src.environment import Environment
+from src.common import HashableWithAsDict
 
 class HistLevel:
     DEBUG = 'DEBUG'
@@ -10,13 +10,14 @@ class History:
         self.hist_level = hist_level
         self.last_hash: int = -1
         self._history = []
+        self._target = None
     
-    def snapshot(self, env: Environment):
-        if hash(env) == self.last_hash:
+    def snapshot(self, obj: HashableWithAsDict) -> None:
+        if hash(obj) == self.last_hash:
             return
         
-        self.last_hash = hash(env)
-        self._history.append(env.as_dict())
+        self.last_hash = hash(obj)
+        self._history.append(obj.as_dict())
     
     def as_dict(self) -> dict:
         return {

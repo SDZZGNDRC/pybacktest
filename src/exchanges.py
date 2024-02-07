@@ -1,6 +1,9 @@
 
 from pathlib import Path
 from typing import Dict, List, Literal
+from colorama import init as colorama_init
+from colorama import Fore
+from colorama import Style
 
 from loguru import logger
 from src.IdxPrice import IdxPrices
@@ -10,6 +13,8 @@ from src.marketdata import MarketData
 from src.order import Order, orderAction, orderSide, orderStatus, orderType
 from src.positions import PosDirection, PosStatus, Positions
 from src.simTime import SimTime
+
+colorama_init()
 
 class Balance:
     def __init__(self, initial_balance: Dict[str, float]) -> None:
@@ -68,7 +73,10 @@ class Exchange:
             },
         }
         self.delivery_fee_rate = 0.0001
-        self.mmr = 0.004
+        # NOTICE: The mmr is not the same for all contracts and not the same for different size of positions.
+        #         Select a fixed value for simplicity when testing.
+        # ! make sure to complete the mmr mechanism in the future.
+        self.mmr = 0.004    # come from(maybe need to login): https://www.okx.com/cn/trade-market/position/futures
         self.positions: Positions = Positions(
             self.mmr, 
             self.transaction_fee['FUTURES']['MarketOrder']['TAKER'], 
@@ -90,7 +98,14 @@ class Exchange:
     def liquidation(self) -> None:
         for pos in filter(lambda pos: pos.STATUS == PosStatus.OPEN, self.positions):
             if pos.MarginRate <= 1.0:
-                logger.debug(f'[{self.simTime}] Occurred liquidation at {pos.inst}')
+                logger.debug(f'[{self.simTime}] {Fore.RED}Occurred liquidation at {pos.inst}{Style.RESET_ALL}')
+                logger.debug(f'MarginRate: {pos.MarginRate}')
+                logger.debug(f'Margin: {pos.Margin}')
+                logger.debug(f'UProfit: {pos.UProfit()}')
+                logger.debug(f'pos.mkPx: {pos._mkPx}')
+                logger.debug(f'pos.leverage: {pos.leverage}')
+                logger.debug(f'pos.OPEN_NUM: {pos.OPEN_NUM}')
+                logger.debug(f'pos.direct: {pos.direct}')
                 if pos.direct == PosDirection.BUYLONG:
                     order_side = orderSide.BUYLONG
                 else:
@@ -102,10 +117,14 @@ class Exchange:
                     order_side,
                     self.simTime,
                     pos.OPEN_NUM,
-                    leverage=pos.leverage,
+                    leverage=pos.leverage,        # ? What is the leverage of the liquidation order?
                     action=orderAction.CLOSE
                 )
                 self.__execute(liquidate_order)
+                logger.debug(f'AOP: {pos.AOP}')
+                logger.debug(f'ACP: {pos.ACP}')
+                logger.debug(f'ask: {pos._mkPx._asks[0].price}')    # type: ignore
+                logger.debug(f'bid: {pos._mkPx._bids[0].price}')    # type: ignore
 
 
     def delivery(self, base: Literal['IndexPrice', 'TradePrice'] = 'IndexPrice') -> None:
@@ -145,6 +164,8 @@ class Exchange:
             self.__execute_limit_order(order)
         elif order.orderType == orderType.MARKET:
             self.__execute_market_order(order)
+            logger.debug(f'[{self.simTime}] executed {order}')
+            logger.debug(f'balance: {self.balance.as_dict()}')
         else:
             raise Exception(f'Unsupported order type: {order.orderType}')
 
@@ -244,7 +265,6 @@ class Exchange:
                 self.balance[order.quote_ccy] -= cost
                 order.exe(bl.price, exec_amount, fee)
         elif order.action == orderAction.CLOSE:
-            
             if order.side == orderSide.BUYLONG:
                 pos_direct = PosDirection.BUYLONG
                 bls = books[inst]['bid'] # close long(sell) -> bid
@@ -264,6 +284,7 @@ class Exchange:
                 # NOTICE: The fee is only deducted from the balance; 
                 # when the balance cannot cover the fee, 
                 # the operation cannot be carried out, regardless of the income.
+                # ! FIXME: We should consider the fee is not enough where the position is closed because liquidation.
                 if self.balance[order.quote_ccy] - fee < 0:
                     order.insufficient()
                     break
@@ -273,6 +294,7 @@ class Exchange:
                     order.leverage, 
                     bl.price, int(exec_amount)
                 )
+                logger.debug(f'returned: {return_value-fee}')
                 self.balance[order.quote_ccy] += return_value - fee
                 
                 order.exe(bl.price, exec_amount, fee)
@@ -281,7 +303,7 @@ class Exchange:
 
 
     def __hash__(self) -> int:
-        return hash((tuple(self.orders), self.balance))
+        return hash((tuple(self.orders), self.balance, self.positions))
     
     def as_dict(self) -> dict:
         return {

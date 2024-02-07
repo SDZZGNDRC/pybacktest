@@ -8,10 +8,14 @@ from src.instrument import Instrument
 class ContRole(Enum):
     SELLER = 'SELLER'
     BUYER = 'BUYER'
+    def __str__(self) -> str:
+        return self.value
 
 class ContStatus(Enum):
     OPEN = 'OPEN'
     CLOSE = 'CLOSE'
+    def __str__(self) -> str:
+        return self.value
 
 
 class Contract:
@@ -39,8 +43,8 @@ class Contract:
         return {
             'uuid': str(self._uuid),
             'instId': self.inst.as_dict(),
-            'role': self.role,
-            'status': self.status,
+            'role': str(self.role),
+            'status': str(self.status),
         }
     
     

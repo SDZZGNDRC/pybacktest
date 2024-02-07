@@ -1,6 +1,7 @@
 from typing import Dict, List, Literal, Tuple, Union
 from enum import Enum
 from uuid import UUID
+import uuid
 
 from loguru import logger
 
@@ -14,12 +15,16 @@ from src.order import Order, orderSide
 class PosDirection(Enum):
     BUYLONG = 'BUYLONG'
     SELLSHORT = 'SELLSHORT'
+    def __str__(self) -> str:
+        return self.value
 
 
 
 class PosAction(Enum):
     OPEN = 'OPEN'
     CLOSE = 'CLOSE'
+    def __str__(self) -> str:
+        return self.value
 
 
 
@@ -27,6 +32,8 @@ class PosStatus(Enum):
     INIT = 'INIT'
     OPEN = 'OPEN'
     CLOSE = 'CLOSE'
+    def __str__(self) -> str:
+        return self.value
 
 
 
@@ -64,6 +71,7 @@ class Position:
         self._loan: Dict[UUID, float] = {}
         self._open_price: Dict[UUID, float] = {}
         self._close_price: Dict[UUID, float] = {}
+        self._uuid = uuid.uuid4()
 
 
     def open(self, entry_price: float, entry_num: int):
@@ -103,7 +111,7 @@ class Position:
                 delta = opened_AOP - mkPx
             else:
                 raise ValueError(f'Unknown position direction {self._direct}')
-            uProfit = self.inst.contract_size * len(opened_conts) * 1 * delta
+            uProfit = self.inst.contract_size * self.OPEN_NUM * 1 * delta
         elif base == 'Commission':
             raise NotImplementedError
         else:
@@ -141,20 +149,21 @@ class Position:
             del self._margin[cont.uuid]
         
         if return_value < 0:
-            raise ValueError(f'return_value({return_value}) should not be less than 0; When equal to 0, it will be Forced to liquidation')
+            raise ValueError(f'Failed to closed {close_num} conts at {close_price}: return_value({return_value}) should not be less than 0; When equal to 0, it will be Forced to liquidation')
         return return_value
 
 
     def as_dict(self) -> dict:
         return {
+            'uuid': str(self._uuid),
             'instId': self.inst.instId,
             'leverage': self.leverage,
-            'direction': self.direct,
+            'direction': str(self.direct),
             'contracts': [cont.as_dict() for cont in self._conts],
-            'margin': self._margin,
-            'loan': self._loan,
-            'open_price': self._open_price,
-            'close_price': self._close_price,
+            'margin': list(map(lambda x: {str(x[0]): x[1]}, self._margin.items())),
+            'loan': list(map(lambda x: {str(x[0]): x[1]}, self._loan.items())),
+            'open_price': list(map(lambda x: {str(x[0]): x[1]}, self._open_price.items())),
+            'close_price': list(map(lambda x: {str(x[0]): x[1]}, self._close_price.items())),
         }
 
 
@@ -244,7 +253,7 @@ class Position:
 
 
     def __hash__(self) -> int:
-        return hash((self.inst, self.leverage, self.direct, self._conts, self._margin))
+        return hash((self.inst, self.leverage, self.direct, tuple(self._conts), tuple(self._margin.items())))
 
 
 
@@ -255,7 +264,8 @@ class Positions:
                  fee_rate: float,
                  marketData: MarketData,
                  ) -> None:
-        self._pos: List[Position] = []
+        self._pos: List[Position] = []          # opened positions
+        self._closed_pos: List[Position] = []   # closed positions
         self._mmr = maintain_margin_rate
         self._fr = fee_rate
         self._marketData = marketData
@@ -288,9 +298,11 @@ class Positions:
         return pos
 
 
+    # move the closed position to _closed_pos
     def __clear(self) -> None:
         for pos in self._pos:
             if pos.STATUS == PosStatus.CLOSE:
+                self._closed_pos.append(pos)
                 self._pos.remove(pos)
 
 
@@ -319,7 +331,7 @@ class Positions:
 
 
     def __hash__(self) -> int:
-        return hash(tuple(self._pos))
+        return hash((tuple(self._pos), tuple(self._closed_pos)))
 
 
     def __iter__(self):
@@ -334,6 +346,10 @@ class Positions:
         self.iter_index += 1
         return value
 
-    def as_dict(self) -> list:
-        return [pos.as_dict() for pos in self._pos]
+    def as_dict(self) -> Dict[str, List[dict]]:
+        # return [pos.as_dict() for pos in self._pos]
+        return {
+            'opened': [pos.as_dict() for pos in self._pos],
+            'closed': [pos.as_dict() for pos in self._closed_pos],
+        }
 

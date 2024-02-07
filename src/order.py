@@ -8,20 +8,28 @@ from src.instrument import Instrument
 class orderType(Enum):
     LIMIT = 'LIMIT'
     MARKET = 'MARKET'
+    def __str__(self) -> str:
+        return self.value
 
 class orderStatus(Enum):
     OPEN = 'OPEN'
     CLOSED = 'CLOSED'
     CANCELED = 'CANCELED'
     INSUFFICIENT = 'INSUFFICIENT'
+    def __str__(self) -> str:
+        return self.value
 
 class orderSide(Enum):
     BUYLONG = 'BUYLONG'
     SELLSHORT = 'SELLSHORT'
+    def __str__(self) -> str:
+        return self.value
 
 class orderAction(Enum):
     OPEN = 'OPEN'
     CLOSE = 'CLOSE'
+    def __str__(self) -> str:
+        return self.value
 
 class TransDetail:
     def __init__(self,
@@ -113,18 +121,21 @@ class Order:
     def __hash__(self) -> int:
         return hash((self.status, tuple(self.detail)))
 
+    def __str__(self) -> str:
+        return f'Order({self.uuid}, {self.inst}, {self.orderType}, {self.side}, {self.price}, {self.amount}, {self.leverage}, {self.action}, {self.status})'
+
     def as_dict(self) -> dict:
         return {
             'uuid': str(self.uuid),
             'instrument': str(self.inst),
-            'orderType': self.orderType,
-            'side': self.side,
+            'orderType': str(self.orderType),
+            'side': str(self.side),
             'ts': self.create_ts,
             'simTime': int(self.simTime),
             'price': self.price,
             'amount': self.amount,
             'leverage': self.leverage,
-            'action': self.action,
-            'status': self.status,
+            'action': str(self.action),
+            'status': str(self.status),
             'detail': [d.as_dict() for d in self.detail],
         }

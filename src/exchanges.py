@@ -189,7 +189,6 @@ class Exchange:
 
     def __execute_market_order_spot(self, order: Order):
         fee_rate = self.transaction_fee['SPOT']['MarketOrder']['TAKER']
-        instId = str(order.inst.instId)
         inst = order.inst
         books: Books = self.marketData['books'] # type: ignore
         if order.side == orderSide.BUYLONG:
@@ -212,7 +211,7 @@ class Exchange:
                 if order.leftAmount == 0:
                     break
                 exec_amount = min(order.leftAmount, bl.amount)
-                if exec_amount > self.balance[order.base_ccy]:
+                if order.leftAmount > self.balance[order.base_ccy]:
                     order.insufficient()
                     print(f'[{self.marketData.simTime}] Insufficient balance: {self.balance[order.base_ccy]} < {exec_amount}')
                     break
@@ -221,6 +220,9 @@ class Exchange:
                 get_amount = exec_amount * bl.price
                 self.balance[order.quote_ccy] += get_amount * (1 - fee_rate)
                 order.exe(bl.price, exec_amount, get_amount * fee_rate)
+            if order.leftAmount > 0:
+                order.insufficient()
+                logger.warning(f'[{self.simTime}] Insufficient liquidity for {order}')
         else:
             raise Exception(f'Unsupported order side: {order.side}')
 

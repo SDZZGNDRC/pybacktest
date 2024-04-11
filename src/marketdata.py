@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 from typing import Literal, Union
-from src.IdxPrice import IdxPrices
 
+from src.IdxPrice import IdxPrices
 from src.books import Books
 from src.markprices import MarkPrices
 from src.mabidask import MABidAsks

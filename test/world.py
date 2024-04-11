@@ -8,9 +8,9 @@ from typing import Dict, List
 
 import pandas as pd
 
-from src.instrument import Instrument, Pair
 
 sys.path.insert(0, sys.path[0]+"/../")
+from src.instrument import Instrument, Pair
 from src.history import HistLevel
 from src.order import Order, orderSide, orderType
 from src.environment import Environment

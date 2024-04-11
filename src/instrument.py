@@ -2,8 +2,8 @@
 from datetime import datetime
 from typing import Optional, Union
 import sys
-sys.path.append('D:\\Project')
-from pybacktest.src.simTime import SimTime
+
+from src.simTime import SimTime
 
 
 class Pair:

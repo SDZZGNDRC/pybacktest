@@ -427,6 +427,6 @@ def test_case3(datadir: Path) -> None:
     assert float_equal(exch.balance['USDT'], correct_balance_USDT, 1e-2)
     assert exch.balance['TRIANGLE'] == correct_balance_TRIANGLE
     
-    hist.save('./out/test_case3.json')
+    # hist.save('./out/test_case3.json')
 
 

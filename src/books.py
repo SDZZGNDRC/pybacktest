@@ -1,15 +1,15 @@
 import glob
 import os
+from pathlib import Path
 from typing import Dict, List, Tuple, Union
 import pandas as pd
-import sys
 
 from src.bookcore import *
 from src.instrument import Instrument
 from src.simTime import SimTime
 
 class Book:
-    def __init__(self, instId: str, simTime: SimTime, path: str, max_interval: int = 2000, check_instId: bool = True) -> None:
+    def __init__(self, instId: str, simTime: SimTime, path: Path, max_interval: int = 2000, check_instId: bool = True) -> None:
         self.simTime = simTime
         self.path = path
         self.max_interval = max_interval
@@ -17,7 +17,8 @@ class Book:
         # initialize the index
         self.index_files: List[str] = glob.glob(os.path.join(self.path, 'part-*-*-*.parquet'))
         if len(self.index_files) == 0:
-            raise Exception('No index files found.')
+            t = os.path.join(self.path, 'part-*-*-*.parquet')
+            raise Exception(f'No index files found at {t}')
         self.index_timePeriods: List[Tuple[int, int]] = []
         for file in self.index_files:
             start, end = os.path.splitext(os.path.basename(file))[0].split('-')[2:]
@@ -122,7 +123,7 @@ class Book:
 
 
 class Books:
-    def __init__(self, path: str, simTime: SimTime, max_interval: int = 10000) -> None:
+    def __init__(self, path: Path, simTime: SimTime, max_interval: int = 10000) -> None:
         self.path = path
         self.simTime = simTime
         self.max_interval = max_interval
@@ -137,7 +138,7 @@ class Books:
     def __getitem__(self, inst: Instrument) -> Book:
         instId = inst.instId
         if instId not in self._books:
-            book_path = os.path.join(self.path, instId)
+            book_path = self.path/instId
             self._books[instId] = Book(instId, self.simTime, book_path, self.max_interval)
         
         return self._books[instId]

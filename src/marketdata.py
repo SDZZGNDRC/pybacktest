@@ -12,7 +12,7 @@ class MarketData:
     def __init__(self, simTime: SimTime, path: Path, max_interval: int = 2000):
         self.simTime = simTime
         self.path = path
-        self._books = Books(os.path.join(path, 'books'), simTime, max_interval)
+        self._books = Books(path/'books', simTime, max_interval)
         self._markPrices = MarkPrices(path/'markprices', simTime, max_interval)
         self._mabidasks = MABidAsks(path/'books', simTime, max_interval) # use the books data.
         self._idxPxs = IdxPrices(path/'indexprices', simTime, max_interval)

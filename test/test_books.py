@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
 import os
@@ -127,7 +128,7 @@ class TestBids:
         assert bids[0].count == 3
 
 
-def setup_book() -> str:
+def setup_book() -> Path:
     temp_dir = tempfile.mkdtemp()
     
     df = pd.DataFrame()
@@ -166,9 +167,9 @@ def setup_book() -> str:
     filename = 'part-0-1687420840901-1687420841201.parquet'
     filepath = os.path.join(temp_dir, filename)
     df.to_parquet(filepath, index=False)
-    return temp_dir
+    return Path(temp_dir)
 
-def clear_book(path: str) -> None:
+def clear_book(path: Path) -> None:
     shutil.rmtree(path)
 
 
@@ -275,7 +276,7 @@ class TestBook:
     
     def test_case(self):
         simTime = SimTime(1689070299902, 1689070343202) # 1689070748602
-        book = Book('1INCH-USDC', simTime, r'D:\Project\pybacktest\test\test_books\books\1INCH-USDC', 10000)
+        book = Book('1INCH-USDC', simTime, Path('./test/test_books/books/1INCH-USDC'), 10000)
         
         correct_asks = Asks()
         correct_asks.set(0.3076, 961.1742, 2)
@@ -853,7 +854,8 @@ class TestBook:
 
     def test_case2(self):
         simTime = SimTime(0, 628000)
-        book = Book('TEST-USDT', simTime, r'D:\Project\pybacktest\test\test_exchanges\books\TEST-USDT')
+        cur_dir = Path(os.getenv('PYTEST_CURRENT_TEST').split(':')[0]).parent # type: ignore
+        book = Book('TEST-USDT', simTime, cur_dir/Path('./test_exchanges/books/TEST-USDT'))
         
         # 0
         assert book.asks[0] == (1001, 1, 1)

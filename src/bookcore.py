@@ -70,8 +70,9 @@ class BookLevel:
 
 
 class Asks:
-    def __init__(self) -> None:
+    def __init__(self, max_depth: int = 400) -> None:
         self._asks: List[BookLevel] = []
+        self.max_depth = max_depth
     
     
     def set(self, price: float, amount: float, count: int) -> None:
@@ -79,12 +80,16 @@ class Asks:
         if amount == 0: # remove the level
             if new_level in self._asks:
                 self._asks.remove(new_level)
-        elif new_level in self._asks: # update the level
-            self._asks[self._asks.index(new_level)] = new_level
-        else: # add the level
-            # Insert the level in the correct position (ascending order)
-            bisect.insort(self._asks, new_level)
-
+        else:
+            idx = bisect.bisect_left(self._asks, new_level)
+            if 0 <= idx < len(self._asks):
+                if self._asks[idx] == new_level:  # update
+                    self._asks[idx] = new_level
+                else:                             # insert new book_level
+                    self._asks.insert(idx, new_level)
+                    self._asks[:] = self._asks[:self.max_depth]
+            elif len(self._asks) < self.max_depth: # append new book_level
+                    self._asks.append(new_level)
 
     def __getitem__(self, index: int) -> BookLevel:
         return self._asks[index]
@@ -107,8 +112,9 @@ class Asks:
 
 
 class Bids:
-    def __init__(self) -> None:
+    def __init__(self, max_depth: int = 400) -> None:
         self._bids: List[BookLevel] = []
+        self.max_depth = max_depth
     
     
     def set(self, price: float, amount: float, count: int) -> None:
@@ -116,13 +122,16 @@ class Bids:
         if amount == 0: # remove the level
             if new_level in self._bids:
                 self._bids.remove(new_level)
-        elif new_level in self._bids: # update the level
-            self._bids[self._bids.index(new_level)] = new_level
-        else: # add the level
-            # Insert the level in the correct position (descending order)
-            self._bids.reverse()
-            bisect.insort_left(self._bids, new_level)
-            self._bids.reverse()
+        else:    
+            idx = bisect.bisect_left(self._bids, -1*new_level.price, key=lambda x: -1*x.price)
+            if 0 <= idx < len(self._bids):
+                if self._bids[idx] == new_level:  # update
+                    self._bids[idx] = new_level
+                else:                             # insert new book_level
+                    self._bids.insert(idx, new_level)
+                    self._bids[:] = self._bids[:self.max_depth]
+            elif len(self._bids) < self.max_depth: # append new book_level
+                    self._bids.append(new_level)
 
 
     def __getitem__(self, index: int) -> BookLevel:

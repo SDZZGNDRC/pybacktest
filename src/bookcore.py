@@ -172,8 +172,8 @@ class BookCore:
     def __init__(self, instId: str, check_instId: bool = True) -> None:
         self.instId = instId
         self.check_instId = check_instId
-        self.asks: Asks = Asks()
-        self.bids: Bids = Bids()
+        self._asks: Asks = Asks()
+        self._bids: Bids = Bids()
     
     
     def set(self, row: dict) -> None:
@@ -181,15 +181,23 @@ class BookCore:
             row_instId = row['instId']
             raise Exception(f'set {row_instId} row with {self.instId}')
         if row['side'] == 'ask':
-            self.asks.set(row['price'], row['size'], row['numOrders'])
+            self._asks.set(row['price'], row['size'], row['numOrders'])
         elif row['side'] == 'bid':
-            self.bids.set(row['price'], row['size'], row['numOrders'])
+            self._bids.set(row['price'], row['size'], row['numOrders'])
         else:
             raise Exception(f'Invalid side: {row["side"]}')
+
+    @property
+    def asks(self) -> Asks:
+        return deepcopy(self._asks)
+    
+    @property
+    def bids(self) -> Bids:
+        return deepcopy(self._bids)
     
     def __deepcopy__(self, memo):
         new_bookcore = BookCore(self.instId, self.check_instId)
-        new_bookcore.asks = deepcopy(self.asks, memo)
-        new_bookcore.bids = deepcopy(self.bids, memo)
+        new_bookcore._asks = deepcopy(self._asks, memo)
+        new_bookcore._bids = deepcopy(self._bids, memo)
         return new_bookcore
         

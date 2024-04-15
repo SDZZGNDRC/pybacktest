@@ -110,6 +110,12 @@ class Book:
         self.update()
         
         return self._core.bids
+    
+    @property
+    def core(self) -> BookCore:
+        self.update()
+        
+        return deepcopy(self._core)
 
 
     def __getitem__(self, side: str) -> Union[Asks, Bids]:

@@ -1,4 +1,5 @@
 import bisect
+from copy import copy, deepcopy
 from typing import List
 
 class BookLevel:
@@ -64,6 +65,9 @@ class BookLevel:
             return self.price > __value
         else:
             raise TypeError("Unsupported type for comparison.")
+    
+    def __deepcopy__(self):
+        return BookLevel(self.price, self.amount, self.count)
 
     def true_eq(self, other) -> bool:
         return self.price == other.price and self.amount == other.amount and self.count == other.count
@@ -110,6 +114,11 @@ class Asks:
     def __iter__(self):
         return iter(self._asks)
 
+    def __deepcopy__(self):
+        new_asks = Asks(self.max_depth)
+        new_asks._asks = deepcopy(self._asks)
+        return new_asks
+
 
 class Bids:
     def __init__(self, max_depth: int = 400) -> None:
@@ -152,6 +161,12 @@ class Bids:
 
     def __iter__(self):
         return iter(self._bids)
+    
+    def __deepcopy__(self):
+        new_bids = Bids(self.max_depth)
+        new_bids._bids = deepcopy(self._bids)
+        return new_bids
+
 
 class BookCore:
     def __init__(self, instId: str, check_instId: bool = True) -> None:

@@ -1,6 +1,6 @@
 import bisect
 from copy import copy, deepcopy
-from typing import List
+from typing import List, Union
 
 class BookLevel:
     def __init__(self, price: float, amount: float, count: int):
@@ -95,8 +95,16 @@ class Asks:
             elif len(self._asks) < self.max_depth: # append new book_level
                     self._asks.append(new_level)
 
-    def __getitem__(self, index: int) -> BookLevel:
-        return self._asks[index]
+    def __getitem__(self, key) -> Union[BookLevel, List[BookLevel]]:
+        if isinstance(key, slice):
+            start = key.start if key.start is not None else 0
+            stop = key.stop if key.stop is not None else len(self._asks)
+            step = key.step if key.step is not None else 1
+            return [self._asks[i] for i in range(start, stop, step)]
+        elif isinstance(key, int):
+            return self._asks[key]
+        else:
+            raise TypeError("Invalid key type. Key must be an integer or a slice.")
     
     
     def __len__(self) -> int:
@@ -143,8 +151,16 @@ class Bids:
                     self._bids.append(new_level)
 
 
-    def __getitem__(self, index: int) -> BookLevel:
-        return self._bids[index]
+    def __getitem__(self, key) -> Union[BookLevel, List[BookLevel]]:
+        if isinstance(key, slice):
+            start = key.start if key.start is not None else 0
+            stop = key.stop if key.stop is not None else len(self._bids)
+            step = key.step if key.step is not None else 1
+            return [self._bids[i] for i in range(start, stop, step)]
+        elif isinstance(key, int):
+            return self._bids[key]
+        else:
+            raise TypeError("Invalid key type. Key must be an integer or a slice.")
     
     
     def __len__(self) -> int:

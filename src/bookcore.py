@@ -195,6 +195,14 @@ class BookCore:
     def bids(self) -> Bids:
         return deepcopy(self._bids)
     
+    @property
+    def depth_asks(self) -> int:
+        return len(self._asks)
+    
+    @property
+    def depth_bids(self) -> int:
+        return len(self._bids)
+    
     def __deepcopy__(self, memo):
         new_bookcore = BookCore(self.instId, self.check_instId)
         new_bookcore._asks = deepcopy(self._asks, memo)

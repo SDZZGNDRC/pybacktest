@@ -66,7 +66,7 @@ class BookLevel:
         else:
             raise TypeError("Unsupported type for comparison.")
     
-    def __deepcopy__(self):
+    def __deepcopy__(self, memo):
         return BookLevel(self.price, self.amount, self.count)
 
     def true_eq(self, other) -> bool:
@@ -114,7 +114,7 @@ class Asks:
     def __iter__(self):
         return iter(self._asks)
 
-    def __deepcopy__(self):
+    def __deepcopy__(self, memo):
         new_asks = Asks(self.max_depth)
         new_asks._asks = deepcopy(self._asks)
         return new_asks
@@ -162,7 +162,7 @@ class Bids:
     def __iter__(self):
         return iter(self._bids)
     
-    def __deepcopy__(self):
+    def __deepcopy__(self, memo):
         new_bids = Bids(self.max_depth)
         new_bids._bids = deepcopy(self._bids)
         return new_bids
@@ -186,4 +186,10 @@ class BookCore:
             self.bids.set(row['price'], row['size'], row['numOrders'])
         else:
             raise Exception(f'Invalid side: {row["side"]}')
+    
+    def __deepcopy__(self, memo):
+        new_bookcore = BookCore(self.instId, self.check_instId)
+        new_bookcore.asks = deepcopy(self.asks, memo)
+        new_bookcore.bids = deepcopy(self.bids, memo)
+        return new_bookcore
         

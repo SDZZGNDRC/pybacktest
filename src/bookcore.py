@@ -33,14 +33,13 @@ class BookLevel:
     
     
     def __eq__(self, __value) -> bool:
+        '''
+        Check the price is equal or not
+        '''
         if isinstance(__value, BookLevel):
             return self.price == __value.price
         elif isinstance(__value, float):
             return self.price == __value
-        elif isinstance(__value, list):
-            return [self.price, self.amount, self.count] == __value
-        elif isinstance(__value, tuple):
-            return (self.price, self.amount, self.count) == __value
         else:
             raise TypeError(f"Unsupported type({type(__value)}) for comparison.")
     

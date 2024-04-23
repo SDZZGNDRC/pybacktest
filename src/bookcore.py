@@ -40,8 +40,10 @@ class BookLevel:
             return self.price == __value.price
         elif isinstance(__value, float):
             return self.price == __value
+        elif isinstance(__value, tuple) and len(__value) == 3:
+            return (self.price, self.amount, self.count) == __value
         else:
-            raise TypeError(f"Unsupported type({type(__value)}) for comparison.")
+            raise TypeError(f"Unsupported type({type(__value)}) for comparison: value {__value}")
     
     
     

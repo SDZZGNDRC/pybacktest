@@ -24,7 +24,7 @@ class SimTime:
         if not (self.__start <= new_ts <= self.__end):
             new_ts = self.__end
         if new_ts <= self.__ts:
-            raise ValueError("Timestamp must be greater than the current timestamp.")
+            raise ValueError(f"Timestamp {new_ts} must be greater than the current timestamp {self.__ts}.")
         self.__ts = new_ts
 
     def __str__(self) -> str:

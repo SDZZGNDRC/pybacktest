@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, Union
 import sys
 
-from src.simTime import SimTime
+from pybacktest.src.simTime import SimTime
 
 
 class Pair:

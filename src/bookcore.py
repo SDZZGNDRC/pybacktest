@@ -44,9 +44,6 @@ class BookLevel:
             raise TypeError(f"Unsupported type({type(__value)}) for comparison.")
     
     
-    def __repr__(self) -> str:
-        return f'BookLevel(price={self.price}, amount={self.amount}, count={self.count})'
-    
     
     def __lt__(self, __value) -> bool:
         if isinstance(__value, BookLevel):
@@ -67,6 +64,12 @@ class BookLevel:
     
     def __deepcopy__(self, memo):
         return BookLevel(self.price, self.amount, self.count)
+
+    def __str__(self) -> str:
+        return f'(p: {self.price}, a: {self.amount}, c: {self.count})'
+    
+    def __repr__(self) -> str:
+        return self.__str__()
 
     def true_eq(self, other) -> bool:
         return self.price == other.price and self.amount == other.amount and self.count == other.count
@@ -125,6 +128,12 @@ class Asks:
         new_asks = Asks(self.max_depth)
         new_asks._asks = deepcopy(self._asks)
         return new_asks
+    
+    def __str__(self) -> str:
+        return str(self._asks)
+    
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class Bids:
@@ -182,6 +191,12 @@ class Bids:
         new_bids._bids = deepcopy(self._bids)
         return new_bids
 
+    def __str__(self) -> str:
+        return str(self._bids)
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 class BookCore:
     def __init__(self, instId: str, check_instId: bool = True) -> None:
@@ -224,3 +239,13 @@ class BookCore:
         new_bookcore._bids = deepcopy(self._bids, memo)
         return new_bookcore
         
+    
+    def __str__(self) -> str:
+        return f'BookCore(instId={self.instId}, check_instId={self.check_instId}, asks={str(self.asks)}, bids={str(self.bids)})'
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+
+
+
+

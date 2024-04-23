@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Union
 import pandas as pd
 
-from src.bookcore import *
-from src.instrument import Instrument
-from src.simTime import SimTime
+from pybacktest.src.bookcore import *
+from pybacktest.src.instrument import Instrument
+from pybacktest.src.simTime import SimTime
 
 class Book:
     def __init__(self, instId: str, simTime: SimTime, path: Path, max_interval: int = 2000, check_instId: bool = True) -> None:

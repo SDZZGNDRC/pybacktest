@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 class SimTime:
     def __init__(self, start: int, end: int) -> None:
         if not isinstance(start, int) or not isinstance(end, int):
@@ -26,6 +29,9 @@ class SimTime:
         if new_ts <= self.__ts:
             raise ValueError(f"Timestamp {new_ts} must be greater than the current timestamp {self.__ts}.")
         self.__ts = new_ts
+
+    def to_Timestamp(self) -> pd.Timestamp:
+        return pd.Timestamp(self.__ts, unit='ms')
 
     def __str__(self) -> str:
         return str(self.__ts)

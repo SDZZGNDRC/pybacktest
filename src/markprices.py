@@ -40,7 +40,7 @@ class MarkPrice:
 
     def _update_index(self) -> bool:
         for i, (start, end) in enumerate(self.index_timePeriods):
-            if self.simTime >= start and self.simTime <= end:
+            if start <= self.simTime <= end:
                 if self.current_index != i:
                     self.current_index = i
                     return True
@@ -63,7 +63,7 @@ class MarkPrice:
         
         # Find the row with a timestamp that is not greater than and closest to simTime
         index = self.chunked_data['timestamp'].searchsorted(int(self.simTime), side='right')
-        if index == 0:
+        if index == 0 or index > len(self.chunked_data):
             raise Exception(f'Current chunked data has no data point with a timestamp smaller than current simTime {int(self.simTime)}')
         closest_row = self.chunked_data.iloc[index - 1]
         

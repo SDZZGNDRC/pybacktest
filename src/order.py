@@ -1,21 +1,35 @@
-from typing import List, Union
+from enum import Enum
+from typing import List, Optional
 import uuid
 
-from simTime import SimTime
+from src.simTime import SimTime
+from src.instrument import Instrument
 
-class orderType:
+class orderType(Enum):
     LIMIT = 'LIMIT'
     MARKET = 'MARKET'
+    def __str__(self) -> str:
+        return self.value
 
-class orderStatus:
+class orderStatus(Enum):
     OPEN = 'OPEN'
     CLOSED = 'CLOSED'
     CANCELED = 'CANCELED'
     INSUFFICIENT = 'INSUFFICIENT'
+    def __str__(self) -> str:
+        return self.value
 
-class orderSide:
-    BUY = 'BUY'
-    SELL = 'SELL'
+class orderSide(Enum):
+    BUYLONG = 'BUYLONG'
+    SELLSHORT = 'SELLSHORT'
+    def __str__(self) -> str:
+        return self.value
+
+class orderAction(Enum):
+    OPEN = 'OPEN'
+    CLOSE = 'CLOSE'
+    def __str__(self) -> str:
+        return self.value
 
 class TransDetail:
     def __init__(self,
@@ -42,17 +56,20 @@ class TransDetail:
 
 class Order:
     def __init__(self,
-                pair: str, orderType: str, 
-                side: str, ts: Union[SimTime, int], 
+                inst: Instrument, orderType: orderType, 
+                side: orderSide, simTime: SimTime, 
                 amount: float, price: float = 0, 
+                leverage: int = 1, action: Optional[orderAction] = None
                 ) -> None:
         self.uuid = uuid.uuid4()
-        self.pair = pair
+        self.inst = inst
         self.orderType = orderType
         self.side = side
-        self.ts = int(ts) # The timestamp when the order is created
-        self.simTime = ts # The simulation time
+        self.create_ts = int(simTime) # The timestamp when the order is created
+        self.simTime = simTime # The simulation time
         self.price = price
+        self.leverage = leverage # Only for futures|swap
+        self.action = action # OPEN|CLOSE; Only for futures|swap
         self.amount = amount
         self.status = orderStatus.OPEN
         self.detail: List[TransDetail] = []
@@ -76,17 +93,11 @@ class Order:
     
     @property
     def base_ccy(self) -> str:
-        s = self.pair.split('-')
-        if len(s) != 2:
-            raise Exception('Invalid pair')
-        return s[0]
+        return self.inst.base_ccy
     
     @property
     def quote_ccy(self) -> str:
-        s = self.pair.split('-')
-        if len(s) != 2:
-            raise Exception('Invalid pair')
-        return s[1]
+        return self.inst.quote_ccy
     
     def exe(self, price: float, amount: float, fee: float) -> None:
         if self.status != orderStatus.OPEN:
@@ -110,16 +121,21 @@ class Order:
     def __hash__(self) -> int:
         return hash((self.status, tuple(self.detail)))
 
+    def __str__(self) -> str:
+        return f'Order({self.uuid}, {self.inst}, {self.orderType}, {self.side}, {self.price}, {self.amount}, {self.leverage}, {self.action}, {self.status})'
+
     def as_dict(self) -> dict:
         return {
             'uuid': str(self.uuid),
-            'pair': self.pair,
-            'orderType': self.orderType,
-            'side': self.side,
-            'ts': self.ts,
+            'instrument': str(self.inst),
+            'orderType': str(self.orderType),
+            'side': str(self.side),
+            'ts': self.create_ts,
             'simTime': int(self.simTime),
             'price': self.price,
             'amount': self.amount,
-            'status': self.status,
+            'leverage': self.leverage,
+            'action': str(self.action),
+            'status': str(self.status),
             'detail': [d.as_dict() for d in self.detail],
         }

@@ -8,7 +8,9 @@ from typing import Dict, List
 
 import pandas as pd
 
+
 sys.path.insert(0, sys.path[0]+"/../")
+from src.instrument import Instrument, Pair
 from src.history import HistLevel
 from src.order import Order, orderSide, orderType
 from src.environment import Environment
@@ -106,42 +108,43 @@ def metabacktest(file: Path) -> tuple:
 class MyStrategy(Strategy):
     def __init__(self, name: str, pairs: List[str]) -> None:
         super().__init__(name, pairs, [], False)
+        self.inst = Instrument(Pair('1INCH', 'USDC'), '1INCH-USDC', 'SPOT')
     
     
     def eval(self, env: Environment) -> List[Event]:
         events: List[Event] = []
         if env.simTime == 1689070299902:
             order = Order(
-                '1INCH-USDC',
+                self.inst,
                 orderType.MARKET,
-                orderSide.BUY,
+                orderSide.BUYLONG,
                 env.simTime, 
                 5,
             )
             events.append(CreateEvent(int(env.simTime), 'OKX', order))
         elif env.simTime == 1689070300902:
             order = Order(
-                '1INCH-USDC',
+                self.inst,
                 orderType.MARKET,
-                orderSide.SELL,
+                orderSide.SELLSHORT,
                 env.simTime,
                 4.5,
             )
             events.append(CreateEvent(int(env.simTime), 'OKX', order))
         elif env.simTime == 1689070302902:
             order = Order(
-                '1INCH-USDC',
+                self.inst,
                 orderType.MARKET,
-                orderSide.BUY,
+                orderSide.BUYLONG,
                 env.simTime,
                 10.123,
             )
             events.append(CreateEvent(int(env.simTime), 'OKX', order))
         elif env.simTime == 1689070310902:
             order = Order(
-                '1INCH-USDC',
+                self.inst,
                 orderType.MARKET,
-                orderSide.SELL,
+                orderSide.SELLSHORT,
                 env.simTime,
                 9.123,
             )

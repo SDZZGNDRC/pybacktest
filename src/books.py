@@ -1,155 +1,15 @@
-
-import bisect
 import glob
 import os
+from pathlib import Path
 from typing import Dict, List, Tuple, Union
-
 import pandas as pd
-from src.simTime import SimTime
 
-
-class BookLevel:
-    def __init__(self, price: float, amount: float, count: int):
-        self._validate_price(price)
-        self._validate_amount(amount)
-        self._validate_count(count)
-        
-        self.price = price
-        self.amount = float(amount)
-        self.count = int(count)
-    
-    
-    def _validate_price(self, price):
-        if not isinstance(price, float):
-            raise TypeError("Price must be a float.")
-        if price <= 0:
-            raise ValueError("Price must be greater than zero.")
-    
-    
-    def _validate_amount(self, amount):
-        if not isinstance(amount, float) and not isinstance(amount, int):
-            raise TypeError("Amount must be a float or an integer.")
-        if amount < 0:
-            raise ValueError("Amount must be greater than or equal to zero.")
-    
-    
-    def _validate_count(self, count):
-        if count < 0:
-            raise ValueError("Count must be greater than or equal to zero.")
-    
-    
-    def __eq__(self, __value) -> bool:
-        if isinstance(__value, BookLevel):
-            return self.price == __value.price
-        elif isinstance(__value, float):
-            return self.price == __value
-        else:
-            raise TypeError("Unsupported type for comparison.")
-    
-    
-    def __repr__(self) -> str:
-        return f'BookLevel(price={self.price}, amount={self.amount}, count={self.count})'
-    
-    
-    def __lt__(self, __value) -> bool:
-        if isinstance(__value, BookLevel):
-            return self.price < __value.price
-        elif isinstance(__value, float):
-            return self.price < __value
-        else:
-            raise TypeError("Unsupported type for comparison.")
-    
-    
-    def __gt__(self, __value) -> bool:
-        if isinstance(__value, BookLevel):
-            return self.price > __value.price
-        elif isinstance(__value, float):
-            return self.price > __value
-        else:
-            raise TypeError("Unsupported type for comparison.")
-
-    def true_eq(self, other) -> bool:
-        return self.price == other.price and self.amount == other.amount and self.count == other.count
-
-
-class Asks:
-    def __init__(self) -> None:
-        self._asks: List[BookLevel] = []
-    
-    
-    def set(self, price: float, amount: float, count: int) -> None:
-        new_level = BookLevel(price, amount, count)
-        if amount == 0: # remove the level
-            if new_level in self._asks:
-                self._asks.remove(new_level)
-        elif new_level in self._asks: # update the level
-            self._asks[self._asks.index(new_level)] = new_level
-        else: # add the level
-            # Insert the level in the correct position (ascending order)
-            bisect.insort(self._asks, new_level)
-
-
-    def __getitem__(self, index: int) -> BookLevel:
-        return self._asks[index]
-    
-    
-    def __len__(self) -> int:
-        return len(self._asks)
-    
-    def __eq__(self, other) -> bool:
-        if len(self._asks) != len(other):
-            return False
-        for i, level in enumerate(self._asks):
-            if not level.true_eq(other[i]):
-                return False
-        
-        return True
-    
-    def __iter__(self):
-        return iter(self._asks)
-
-
-class Bids:
-    def __init__(self) -> None:
-        self._bids: List[BookLevel] = []
-    
-    
-    def set(self, price: float, amount: float, count: int) -> None:
-        new_level = BookLevel(price, amount, count)
-        if amount == 0: # remove the level
-            if new_level in self._bids:
-                self._bids.remove(new_level)
-        elif new_level in self._bids: # update the level
-            self._bids[self._bids.index(new_level)] = new_level
-        else: # add the level
-            # Insert the level in the correct position (descending order)
-            self._bids.reverse()
-            bisect.insort_left(self._bids, new_level)
-            self._bids.reverse()
-
-
-    def __getitem__(self, index: int) -> BookLevel:
-        return self._bids[index]
-    
-    
-    def __len__(self) -> int:
-        return len(self._bids)
-    
-    
-    def __eq__(self, other) -> bool:
-        for i, level in enumerate(self._bids):
-            if not level.true_eq(other[i]):
-                return False
-        
-        return True
-
-
-    def __iter__(self):
-        return iter(self._bids)
+from pybacktest.src.bookcore import *
+from pybacktest.src.instrument import Instrument
+from pybacktest.src.simTime import SimTime
 
 class Book:
-    def __init__(self, pair: str, simTime: SimTime, path: str, max_interval: int = 2000) -> None:
-        self.pair = pair
+    def __init__(self, instId: str, simTime: SimTime, path: Path, max_interval: int = 2000, check_instId: bool = True) -> None:
         self.simTime = simTime
         self.path = path
         self.max_interval = max_interval
@@ -157,7 +17,8 @@ class Book:
         # initialize the index
         self.index_files: List[str] = glob.glob(os.path.join(self.path, 'part-*-*-*.parquet'))
         if len(self.index_files) == 0:
-            raise Exception('No index files found.')
+            t = os.path.join(self.path, 'part-*-*-*.parquet')
+            raise Exception(f'No index files found at {t}')
         self.index_timePeriods: List[Tuple[int, int]] = []
         for file in self.index_files:
             start, end = os.path.splitext(os.path.basename(file))[0].split('-')[2:]
@@ -169,18 +30,20 @@ class Book:
 
         self.current_ts = -1
         self.chunked_index = 0
-        self._asks: Asks = Asks()
-        self._bids: Bids = Bids()
+        self._core = BookCore(instId, check_instId)
         
         self.update()
 
 
     def _update_index(self) -> bool:
         for i, (start, end) in enumerate(self.index_timePeriods):
-            if self.simTime >= start and self.simTime <= end:
+            if start <= self.simTime <= end:
                 if self.current_index != i:
                     self.current_index = i
                     return True
+        
+        if self.current_index == -1:
+            raise Exception(f'Can not find a chunk files for the simTime {int(self.simTime)}')
         
         return False
 
@@ -193,6 +56,7 @@ class Book:
             self.chunked_data = pd.read_parquet(self.index_files[self.current_index])
             
             # ensure the `action` field is correct in the first row
+            # NOTICE: MUST ensure that each chunked data file have a snapshot at the beginning.
             if self.chunked_data.iloc[0]['action'] != 'snapshot':
                 raise Exception('The first row of the chunked data must be a snapshot.')
             
@@ -204,7 +68,7 @@ class Book:
                 if row['action'] != 'snapshot' or row['timestamp'] != initial_ts: # finish loading the snapshot
                     break
                 
-                self.__set(row)
+                self._core.set(dict(row))
                 
                 self.chunked_index += 1
         
@@ -222,9 +86,10 @@ class Book:
                 break
 
             if abs(row['timestamp'] - self.current_ts) > self.max_interval and self.current_ts != -1:
-                raise Exception(f'The time interval between two consecutive rows {(row["timestamp"], self.current_ts)} exceeds the maximum interval.')
+                time_interval = abs(row['timestamp'] - self.current_ts)
+                raise Exception(f'The time interval {time_interval} between two consecutive rows {(self.current_ts, row["timestamp"])} exceeds the maximum interval {self.max_interval}.')
             
-            self.__set(row)
+            self._core.set(dict(row))
             if row['timestamp'] != self.current_ts:
                 self.current_ts = row['timestamp']
             self.chunked_index += 1
@@ -232,26 +97,25 @@ class Book:
         self.current_ts = int(self.simTime)
 
 
-    def __set(self, row: pd.Series) -> None:
-        if row['side'] == 'ask':
-            self._asks.set(row['price'], row['size'], row['numOrders'])
-        elif row['side'] == 'bid':
-            self._bids.set(row['price'], row['size'], row['numOrders'])
-        else:
-            raise Exception(f'Invalid side: {row["side"]}')
-        
+
     
     @property
     def asks(self) -> Asks:
         self.update()
         
-        return self._asks
+        return self._core.asks
     
     @property
     def bids(self) -> Bids:
         self.update()
         
-        return self._bids
+        return self._core.bids
+    
+    @property
+    def core(self) -> BookCore:
+        self.update()
+        
+        return deepcopy(self._core)
 
 
     def __getitem__(self, side: str) -> Union[Asks, Bids]:
@@ -263,8 +127,9 @@ class Book:
             raise Exception(f'Invalid side: {side}')
 
 
+
 class Books:
-    def __init__(self, path: str, simTime: SimTime, max_interval: int = 2000) -> None:
+    def __init__(self, path: Path, simTime: SimTime, max_interval: int = 10000) -> None:
         self.path = path
         self.simTime = simTime
         self.max_interval = max_interval
@@ -276,12 +141,10 @@ class Books:
         return len(self._books)
     
     
-    def __getitem__(self, pair: str) -> Book:
-        if not isinstance(pair, str):
-            raise TypeError("Pair must be a string.")
-        if pair not in self._books:
-            book_path = os.path.join(self.path, pair)
-            self._books[pair] = Book(pair, self.simTime, book_path, self.max_interval)
+    def __getitem__(self, inst: Instrument) -> Book:
+        instId = inst.instId
+        if instId not in self._books:
+            book_path = self.path/instId
+            self._books[instId] = Book(instId, self.simTime, book_path, self.max_interval)
         
-        return self._books[pair]
-    
+        return self._books[instId]

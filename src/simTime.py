@@ -7,6 +7,8 @@ class SimTime:
             raise ValueError("Start and end times must be integers.")
         if start >= end:
             raise ValueError("End time must be greater than start time.")
+        if start < 0:
+            raise ValueError("Start time must be greater than or equal to 0.")
         self.__start = start
         self.__end = end
         self.__ts = start # Current timestamp

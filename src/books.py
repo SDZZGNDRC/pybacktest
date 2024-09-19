@@ -126,6 +126,8 @@ class Book:
         else:
             raise Exception(f'Invalid side: {side}')
 
+    def filled(self, depth: int) -> bool:
+        return self._core.filled(depth)
 
 
 class Books:

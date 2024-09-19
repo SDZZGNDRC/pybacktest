@@ -248,6 +248,7 @@ class BookCore:
     def __repr__(self) -> str:
         return self.__str__()
 
-
+    def filled(self, depth: int) -> bool:
+        return len(self._asks) >= depth and len(self._bids) >= depth
 
 

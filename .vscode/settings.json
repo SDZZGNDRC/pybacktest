@@ -28,7 +28,10 @@
     "python.analysis.typeCheckingMode": "basic",
     "peacock.color": "#42b883",
     "python.analysis.extraPaths": [
-        "D:\\Project"
+        "C:\\Projects"
+    ],
+    "python.autoComplete.extraPaths": [
+        "C:\\Projects"
     ],
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#65c89b",

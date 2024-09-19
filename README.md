@@ -2,6 +2,8 @@
 
 A backtest framework written in python, used for testing trading strategies.
 
+> NOTICE: When opening with `VSCode`, if you encounter `import` related errors, please configure the `python.analysis.extraPaths` and `python.autoComplete.extraPaths` settings in the `.vscode` folder.
+
 ## Features
 
 * **Order Books**: This backtest framework uses order books to simulate the market.  

@@ -19,7 +19,7 @@ class SimTime:
         if ts < self.__start or ts > self.__end:
             raise ValueError("Timestamp must be within the simulation start and end times.")
         if ts <= self.__ts:
-            raise ValueError("Timestamp must be greater than the current timestamp.")
+            raise ValueError(f"Timestamp {ts} must be greater than the current timestamp {self.__ts}.")
         self.__ts = ts
     
     def add(self, ts: int) -> None:
@@ -31,6 +31,14 @@ class SimTime:
         if new_ts <= self.__ts:
             raise ValueError(f"Timestamp {new_ts} must be greater than the current timestamp {self.__ts}.")
         self.__ts = new_ts
+
+    @property
+    def start(self) -> int:
+        return self.__start
+
+    @property
+    def end(self) -> int:
+        return self.__end
 
     def to_Timestamp(self) -> pd.Timestamp:
         return pd.Timestamp(self.__ts, unit='ms')

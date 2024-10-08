@@ -84,20 +84,22 @@ class Asks:
     
     
     def set(self, price: float, amount: float, count: int) -> None:
+        # NOTICE: Have been refactored by Claude-3-5-sonnet-20240620 
         new_level = BookLevel(price, amount, count)
-        if amount == 0: # remove the level
-            if new_level in self._asks:
-                self._asks.remove(new_level)
+        
+        if amount == 0:  # Remove the level
+            idx = bisect.bisect_left(self._asks, new_level)
+            if idx < len(self._asks) and self._asks[idx] == new_level:
+                del self._asks[idx]
         else:
             idx = bisect.bisect_left(self._asks, new_level)
-            if 0 <= idx < len(self._asks):
-                if self._asks[idx] == new_level:  # update
-                    self._asks[idx] = new_level
-                else:                             # insert new book_level
+            if idx < len(self._asks) and self._asks[idx] == new_level:
+                self._asks[idx] = new_level  # Update existing level
+            else:
+                if idx < self.max_depth:  # Insert new level
                     self._asks.insert(idx, new_level)
-                    self._asks[:] = self._asks[:self.max_depth]
-            elif len(self._asks) < self.max_depth: # append new book_level
-                    self._asks.append(new_level)
+                    if len(self._asks) > self.max_depth:
+                        self._asks.pop()  # Remove last element if exceeding max_depth
 
     def __getitem__(self, key) -> Union[BookLevel, List[BookLevel]]:
         if isinstance(key, slice):
@@ -115,13 +117,11 @@ class Asks:
         return len(self._asks)
     
     def __eq__(self, other) -> bool:
-        if len(self._asks) != len(other):
+        # NOTICE: Have been refactored by Claude-3-5-sonnet-20240620
+        if not isinstance(other, Asks) or len(self._asks) != len(other._asks):
             return False
-        for i, level in enumerate(self._asks):
-            if not level.true_eq(other[i]):
-                return False
         
-        return True
+        return all(self_level.true_eq(other_level) for self_level, other_level in zip(self._asks, other._asks))
     
     def __iter__(self):
         return iter(self._asks)
@@ -145,20 +145,22 @@ class Bids:
     
     
     def set(self, price: float, amount: float, count: int) -> None:
+        # NOTICE: Have been refactored by Claude-3-5-sonnet-20240620 
         new_level = BookLevel(price, amount, count)
-        if amount == 0: # remove the level
-            if new_level in self._bids:
-                self._bids.remove(new_level)
-        else:    
-            idx = bisect.bisect_left(self._bids, -1*new_level.price, key=lambda x: -1*x.price)
-            if 0 <= idx < len(self._bids):
-                if self._bids[idx] == new_level:  # update
-                    self._bids[idx] = new_level
-                else:                             # insert new book_level
+        
+        if amount == 0:  # Remove the level
+            idx = bisect.bisect_left(self._bids, -price, key=lambda x: -x.price)
+            if idx < len(self._bids) and self._bids[idx] == new_level:
+                del self._bids[idx]
+        else:
+            idx = bisect.bisect_left(self._bids, -price, key=lambda x: -x.price)
+            if idx < len(self._bids) and self._bids[idx] == new_level:
+                self._bids[idx] = new_level  # Update existing level
+            else:
+                if idx < self.max_depth:  # Insert new level
                     self._bids.insert(idx, new_level)
-                    self._bids[:] = self._bids[:self.max_depth]
-            elif len(self._bids) < self.max_depth: # append new book_level
-                    self._bids.append(new_level)
+                    if len(self._bids) > self.max_depth:
+                        self._bids.pop()  # Remove last element if exceeding max_depth
 
 
     def __getitem__(self, key) -> Union[BookLevel, List[BookLevel]]:
@@ -178,11 +180,11 @@ class Bids:
     
     
     def __eq__(self, other) -> bool:
-        for i, level in enumerate(self._bids):
-            if not level.true_eq(other[i]):
-                return False
+        # NOTICE: Have been refactored by Claude-3-5-sonnet-20240620
+        if not isinstance(other, Bids) or len(self._bids) != len(other._bids):
+            return False
         
-        return True
+        return all(self_level.true_eq(other_level) for self_level, other_level in zip(self._bids, other._bids))
 
 
     def __iter__(self):
@@ -208,7 +210,7 @@ class BookCore:
         self._bids: Bids = Bids()
     
     
-    def set(self, row: dict) -> None:
+    def set(self, row) -> None:
         if self.check_instId and 'instId' in row and (self.instId != row['instId'] and not self.instId == row['instId'] + '-400'):
             row_instId = row['instId']
             raise Exception(f'set {row_instId} row with {self.instId}')

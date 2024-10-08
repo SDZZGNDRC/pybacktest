@@ -209,7 +209,7 @@ class BookCore:
     
     
     def set(self, row: dict) -> None:
-        if self.check_instId and 'instId' in row and self.instId != row['instId']:
+        if self.check_instId and 'instId' in row and (self.instId != row['instId'] and not self.instId == row['instId'] + '-400'):
             row_instId = row['instId']
             raise Exception(f'set {row_instId} row with {self.instId}')
         if row['side'] == 'ask':

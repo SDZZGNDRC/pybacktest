@@ -2,18 +2,15 @@ from math import isclose
 from distutils import dir_util
 import os
 from pathlib import Path
-import sys
-sys.path.insert(0, sys.path[0]+"/../")
-
 import pytest
 
-from src.history import History
-from src.instrument import Instrument, InstType, Pair
-from src.order import Order, orderAction, orderSide, orderStatus, orderType
-from src.positions import PosDirection
+from pybacktest.history import History
+from pybacktest.instrument import Instrument, InstType, Pair
+from pybacktest.order import Order, orderAction, orderSide, orderStatus, orderType
+from pybacktest.positions import PosDirection
 
-from src.simTime import SimTime
-from src.exchanges import Exchange
+from pybacktest.simTime import SimTime
+from pybacktest.exchanges import Exchange
 
 def float_equal(a, b, epsilon=1e-9):
     return abs(a - b) < epsilon

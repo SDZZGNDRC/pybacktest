@@ -1,5 +1,5 @@
 import json
-from src.common import HashableWithAsDict
+from .common import HashableWithAsDict
 
 class HistLevel:
     DEBUG = 'DEBUG'

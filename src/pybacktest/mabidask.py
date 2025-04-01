@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Deque, Dict, List, Tuple
 
 import pandas as pd
-from src.instrument import Instrument
-from src.simTime import SimTime
-from src.books import Asks, Bids
+from .instrument import Instrument
+from .simTime import SimTime
+from .bookcore import Asks, Bids
 
 
 class mabidask:

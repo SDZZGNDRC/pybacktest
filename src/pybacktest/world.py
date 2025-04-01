@@ -1,11 +1,11 @@
 
 from typing import List
 
-from src.event import Event
-from src.environment import Environment
-from src.backtest import Backtest
-from src.history import History
-from src.simTime import SimTime
+from .event import Event
+from .environment import Environment
+from .backtest import Backtest
+from .history import History
+from .simTime import SimTime
 
 
 class World:

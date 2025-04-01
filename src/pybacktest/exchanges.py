@@ -6,13 +6,13 @@ from colorama import Fore
 from colorama import Style
 
 from loguru import logger
-from src.IdxPrice import IdxPrices
-from src.books import Books
-from src.instrument import InstType
-from src.marketdata import MarketData
-from src.order import Order, orderAction, orderSide, orderStatus, orderType
-from src.positions import PosDirection, PosStatus, Positions
-from src.simTime import SimTime
+from .idxPrice import IdxPrices
+from .books import Books
+from .instrument import InstType
+from .marketdata import MarketData
+from .order import Order, orderAction, orderSide, orderStatus, orderType
+from .positions import PosDirection, PosStatus, Positions
+from .simTime import SimTime
 
 colorama_init()
 

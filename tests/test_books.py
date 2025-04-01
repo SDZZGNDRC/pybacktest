@@ -1,16 +1,15 @@
-from pathlib import Path
-import sys
-sys.path.insert(0, sys.path[0]+"/../")
 import os
 import shutil
 import tempfile
 
 import pandas as pd
-
-from src.simTime import SimTime
+from pathlib import Path
 import pytest
 
-from src.books import Book, BookLevel, Asks, Bids
+from pybacktest.simTime import SimTime
+from pybacktest.bookcore import BookLevel, Asks, Bids
+from pybacktest.books import Book
+
 
 class TestBookLevel:
     def test_init(self):

@@ -2,8 +2,8 @@ from enum import Enum
 from typing import List, Optional
 import uuid
 
-from src.simTime import SimTime
-from src.instrument import Instrument
+from .simTime import SimTime
+from .instrument import Instrument
 
 class orderType(Enum):
     LIMIT = 'LIMIT'

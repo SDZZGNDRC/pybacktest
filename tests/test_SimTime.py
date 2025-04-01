@@ -1,8 +1,6 @@
-import sys
-sys.path.insert(0, sys.path[0]+"/../")
-
 import pytest
-from src.simTime import SimTime
+
+from pybacktest.simTime import SimTime
 
 def test_simTime_creation():
     # Test valid creation

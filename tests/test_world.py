@@ -2,22 +2,18 @@ import json
 import os
 from pathlib import Path
 import shutil
-import sys
 import tempfile
 from typing import Dict, List
-
 import pandas as pd
 
-
-sys.path.insert(0, sys.path[0]+"/../")
-from src.instrument import Instrument, Pair
-from src.history import HistLevel
-from src.order import Order, orderSide, orderType
-from src.environment import Environment
-from src.event import Event, CreateEvent
-from src.backtest import Backtest
-from src.strategy import CustomStrategy, Strategy
-from src.world import World
+from pybacktest.instrument import Instrument, Pair
+from pybacktest.history import HistLevel
+from pybacktest.order import Order, orderSide, orderType
+from pybacktest.environment import Environment
+from pybacktest.event import Event, CreateEvent
+from pybacktest.backtest import Backtest
+from pybacktest.strategy import CustomStrategy, Strategy
+from pybacktest.world import World
 
 import pytest
 

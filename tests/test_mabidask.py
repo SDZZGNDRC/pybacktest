@@ -1,14 +1,11 @@
 from pathlib import Path
-import sys
-sys.path.insert(0, sys.path[0]+"/../")
-
 import pandas as pd
-
-from src.simTime import SimTime
 import pytest
 
-from src.mabidask import mabidask
-from src.books import Book
+
+from pybacktest.simTime import SimTime
+from pybacktest.mabidask import mabidask
+from pybacktest.books import Book
 
 class TestMabidask:
     def test_case1(self):

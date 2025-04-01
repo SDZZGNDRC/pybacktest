@@ -12,6 +12,10 @@ from .bookcore import Asks, Bids
 
 
 class mabidask:
+    """
+    Move average of bid and ask.
+    """
+    # FIXME: 该指标的计算方法有问题。应该依赖于Books类。
     def __init__(self, instId: str, simTime: SimTime, path: Path, window: int = 1, max_interval: int = 2000) -> None:
         self.instId = instId
         self.simTime = simTime

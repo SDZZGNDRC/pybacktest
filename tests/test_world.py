@@ -17,6 +17,8 @@ from pybacktest.world import World
 
 import pytest
 
+TEST_DIR = Path(os.path.abspath(__file__)).parent
+
 def metabacktest(file: Path) -> tuple:
     if not file.is_file():
         raise FileNotFoundError(f"File {file} does not exist.")
@@ -164,30 +166,29 @@ class TestWorld:
     #     history.save('./out/test_world_case1.json')
 
     def test_case2(self):
-        params = metabacktest(Path(r'D:\Project\metabacktest\testcase.json'))
+        tmp_dir, strategy, start_ts, end_ts, initial_balance, ref = metabacktest(TEST_DIR/Path('./metabacktest/testcase.json'))
         
-        world = World(params[0], 1000000)
-        strategy = params[1]
+        world = World(tmp_dir, 1000000)
         backtest = Backtest(
             strategy,
-            params[2],
-            params[3],
+            start_ts,
+            end_ts,
             HistLevel.DEBUG,
             ['OKX'],
-            initial_balance=params[4],
+            initial_balance=initial_balance,
         )
         
         history = world.run(backtest)
         history.save('./out/test_world_case2.json')
         
         # Verify
-        assert len(params[5]) == len(history)
-        ref_balances = list(params[5].items())
-        for i in range(len(params[5])):
+        assert len(ref) == len(history)
+        ref_balances = list(ref.items())
+        for i in range(len(ref)):
             for k in ref_balances[i][1].keys():
                 assert abs(ref_balances[i][1][k] - history[i]['exchanges']['OKX']['balance'][k])/ref_balances[i][1][k] < 0.000001
         
-        shutil.rmtree(params[0])
+        shutil.rmtree(tmp_dir)
 
 if __name__ == "__main__":
     pytest.main()

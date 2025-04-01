@@ -1,16 +1,18 @@
 from pathlib import Path
 import pandas as pd
 import pytest
-
+import os
 
 from pybacktest.simTime import SimTime
 from pybacktest.mabidask import mabidask
 from pybacktest.books import Book
 
+TEST_DIR = Path(os.path.abspath(__file__)).parent
+
 class TestMabidask:
     def test_case1(self):
         simTime = SimTime(0, 62000)
-        _mabidask = mabidask('TEST-USDT', simTime, Path(r'D:\Project\pybacktest\test\test_exchanges\books\TEST-USDT'), window=1, max_interval=2000)
+        _mabidask = mabidask('TEST-USDT', simTime, TEST_DIR/'test_exchanges/books/TEST-USDT', window=1, max_interval=2000)
         
         # 0
         assert _mabidask.now == 1000.0
@@ -34,7 +36,7 @@ class TestMabidask:
 
     def test_case2(self):
         simTime = SimTime(0, 62000)
-        _mabidask = mabidask('TEST-USDT', simTime, Path(r'D:\Project\pybacktest\test\test_exchanges\books\TEST-USDT'), window=2, max_interval=2000)
+        _mabidask = mabidask('TEST-USDT', simTime, TEST_DIR/'/test_exchanges/books/TEST-USDT', window=2, max_interval=2000)
         
         # 0
         assert _mabidask.now == 1000.0

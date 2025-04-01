@@ -58,7 +58,7 @@ class Order:
     def __init__(self,
                 inst: Instrument, orderType: orderType, 
                 side: orderSide, simTime: SimTime, 
-                amount: float, price: float = 0, 
+                price: float = 0, amount: float = 0, 
                 leverage: int = 1, action: Optional[orderAction] = None
                 ) -> None:
         self.uuid = uuid.uuid4()

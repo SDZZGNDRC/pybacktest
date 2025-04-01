@@ -10,6 +10,7 @@ from pybacktest.simTime import SimTime
 from pybacktest.bookcore import BookLevel, Asks, Bids
 from pybacktest.books import Book
 
+TEST_DIR = Path(os.path.abspath(__file__)).parent
 
 class TestBookLevel:
     def test_init(self):
@@ -275,7 +276,7 @@ class TestBook:
     
     def test_case(self):
         simTime = SimTime(1689070299902, 1689070343202) # 1689070748602
-        book = Book('1INCH-USDC', simTime, Path('./test/test_books/books/1INCH-USDC'), 10000)
+        book = Book('1INCH-USDC', simTime, TEST_DIR/'test_books/books/1INCH-USDC', 10000)
         
         correct_asks = Asks()
         correct_asks.set(0.3076, 961.1742, 2)
@@ -854,7 +855,7 @@ class TestBook:
     def test_case2(self):
         simTime = SimTime(0, 628000)
         cur_dir = Path(os.getenv('PYTEST_CURRENT_TEST').split(':')[0]).parent # type: ignore
-        book = Book('TEST-USDT', simTime, cur_dir/Path('./test_exchanges/books/TEST-USDT'))
+        book = Book('TEST-USDT', simTime, TEST_DIR/'test_exchanges/books/TEST-USDT')
         
         # 0
         assert book.asks[0] == (1001, 1, 1)

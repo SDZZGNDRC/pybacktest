@@ -1,5 +1,5 @@
 from math import isclose
-from distutils import dir_util
+import shutil
 import os
 from pathlib import Path
 import pytest
@@ -21,7 +21,7 @@ def datadir(tmp_path, request) -> Path:
     test_dir, _ = os.path.splitext(filename)        # remove the extension part
 
     if os.path.isdir(test_dir):
-        dir_util.copy_tree(test_dir, str(tmp_path))
+        shutil.copytree(test_dir, str(tmp_path), dirs_exist_ok=True)
     return tmp_path
 
 @pytest.fixture
@@ -425,5 +425,3 @@ def test_case3(datadir: Path) -> None:
     assert exch.balance['TRIANGLE'] == correct_balance_TRIANGLE
     
     # hist.save('./out/test_case3.json')
-
-

@@ -2,6 +2,8 @@ import bisect
 from copy import deepcopy
 from typing import List
 
+import pandas as pd
+
 class BookLevel:
     def __init__(self, price: float, amount: float, count: int):
         self._validate_price(price)
@@ -101,11 +103,13 @@ class Asks:
                     if len(self._asks) > self.max_depth:
                         self._asks.pop()  # Remove last element if exceeding max_depth
 
-    def __getitem__(self, key) -> BookLevel:
+    def __getitem__(self, key) -> BookLevel | List[BookLevel]:
         if isinstance(key, int):
             return self._asks[key]
+        elif isinstance(key, slice):
+            return self._asks[key]
         else:
-            raise TypeError("Invalid key type. Key must be an integer.")
+            raise TypeError(f"Invalid key type. Key must be an integer or slice, but got {type(key)}, {key}.")
     
     
     def __len__(self) -> int:
@@ -158,11 +162,13 @@ class Bids:
                         self._bids.pop()  # Remove last element if exceeding max_depth
 
 
-    def __getitem__(self, key) -> BookLevel:
+    def __getitem__(self, key) -> BookLevel | List[BookLevel]:
         if isinstance(key, int):
             return self._bids[key]
+        elif isinstance(key, slice):
+            return self._bids[key]
         else:
-            raise TypeError("Invalid key type. Key must be an integer.")
+            raise TypeError(f"Invalid key type. Key must be an integer or slice, but got {type(key)}, {key}.")
     
     
     def __len__(self) -> int:
@@ -210,6 +216,22 @@ class BookCore:
             self._bids.set(row['price'], row['size'], row['numOrders'])
         else:
             raise Exception(f'Invalid side: {row["side"]}')
+
+    def set_datapoint(self, dp) -> None:
+        if self.check_instId and (self.instId != dp['arg']['instId']):
+            raise Exception(f"bookcore's instId {self.instId} is not equal to dp's instId {dp['arg']['instId']}")
+        for bl in dp['data']['asks']:
+            self._asks.set(float(bl[0]), float(bl[1]), int(bl[3]))
+        for bl in dp['data']['bids']:
+            self._bids.set(float(bl[0]), float(bl[1]), int(bl[3]))
+
+    def set_ori_dp(self, dp: pd.Series) -> None:
+        if self.check_instId and (self.instId != dp.arg['instId']):
+            raise Exception(f"bookcore's instId {self.instId} is not equal to dp's instId {dp.arg['instId']}")
+        for bl in dp.data['asks']:
+            self._asks.set(float(bl[0]), float(bl[1]), int(bl[3]))
+        for bl in dp.data['bids']:
+            self._bids.set(float(bl[0]), float(bl[1]), int(bl[3]))
 
     @property
     def asks(self) -> Asks:

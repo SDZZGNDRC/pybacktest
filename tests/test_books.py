@@ -7,10 +7,65 @@ from pathlib import Path
 import pytest
 
 from pybacktest.simTime import SimTime
-from pybacktest.bookcore import BookLevel, Asks, Bids
+from cbookcore import BookLevel, Asks, Bids
 from pybacktest.books import Book
 
 TEST_DIR = Path(os.path.abspath(__file__)).parent
+
+def assert_and_debug_asks(book_asks, correct_asks):
+    """
+    一个辅助函数，用于比较两个 Asks 对象。
+    如果它们不相等，则打印出详细的差异信息，然后触发断言失败。
+    """
+    # 首先，比较 Asks.__eq__ 的结果，这会调用 C++ 的实现
+    if book_asks == correct_asks:
+        return  # 如果相等，什么都不做，测试通过
+
+    # 如果不相等，开始手动调试
+    print("\n--- DEBUGGING ASKS DIFF ---")
+    
+    # 1. 检查长度是否一致
+    if len(book_asks) != len(correct_asks):
+        print(f"ERROR: Lengths are different!")
+        print(f"  - book.asks length: {len(book_asks)}")
+        print(f"  - correct_asks length: {len(correct_asks)}")
+    else:
+        print("INFO: Lengths are the same. Checking elements one by one.")
+
+    # 2. 逐个元素比较，找出第一个不匹配的元素
+    min_len = min(len(book_asks), len(correct_asks))
+    found_diff = False
+    for i in range(min_len):
+        level1 = book_asks[i]
+        level2 = correct_asks[i]
+        # 使用 C++ 绑定的 true_eq 方法进行比较
+        if not level1.true_eq(level2):
+            print(f"\nERROR: Mismatch at index {i}:")
+            print(f"  - book.asks[{i}]:    (p: {level1.price:.10f}, a: {level1.amount:.10f}, c: {level1.count})")
+            print(f"  - correct_asks[{i}]: (p: {level2.price:.10f}, a: {level2.amount:.10f}, c: {level2.count})")
+            # 打印原始 repr
+            print(f"  - Raw book.asks[{i}]:    {repr(level1)}")
+            print(f"  - Raw correct_asks[{i}]: {repr(level2)}")
+            found_diff = True
+            break # 找到第一个差异后就停止
+
+    # 3. 如果公共部分的元素都相同，但长度不同，则打印出多余的元素
+    if not found_diff and len(book_asks) != len(correct_asks):
+        print("\nINFO: Extra elements in the longer list:")
+        if len(book_asks) > len(correct_asks):
+            print("  Extra elements in book.asks:")
+            for i in range(min_len, len(book_asks)):
+                print(f"    - Index {i}: {repr(book_asks[i])}")
+        else:
+            print("  Extra elements in correct_asks:")
+            for i in range(min_len, len(correct_asks)):
+                print(f"    - Index {i}: {repr(correct_asks[i])}")
+
+    print("--- END DEBUGGING ---")
+    
+    # 最后，触发断言失败，让 pytest 知道测试失败了
+    assert book_asks == correct_asks
+
 
 class TestBookLevel:
     def test_init(self):
@@ -192,7 +247,7 @@ class TestBook:
         correct_asks.set(145.0, 47.0, 5)
         
         assert book.current_ts == 1687420840901
-        assert book.asks == correct_asks
+        assert_and_debug_asks(book.asks, correct_asks)
         
         correct_bids = Bids()
         correct_bids.set(90.0, 50.0, 1)

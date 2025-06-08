@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Union
 import pandas as pd
 
-from .bookcore import *
+# from .bookcore import *
+from cbookcore import BookCore, BookLevel, Asks, Bids
 from .instrument import Instrument
 from .simTime import SimTime
 
@@ -111,8 +112,8 @@ class Book:
                 time_interval = abs(row['timestamp'] - self.current_ts)
                 raise Exception(f'The time interval {time_interval} between two consecutive rows {(self.current_ts, row["timestamp"])} exceeds the maximum interval {self.max_interval}.')
             
-            # self._core.set(dict(row))
-            self._core.set(row)
+            self._core.set(dict(row))
+            # self._core.set(row)
             if row['timestamp'] != self.current_ts:
                 self.current_ts = row['timestamp']
             self.chunked_index += 1

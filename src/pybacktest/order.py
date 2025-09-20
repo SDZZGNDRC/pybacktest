@@ -56,14 +56,30 @@ class TransDetail:
 
 class Order:
     def __init__(self,
-                inst: Instrument, orderType: orderType, 
-                side: orderSide, simTime: SimTime, 
-                price: float = 0, amount: float = 0, 
+                inst: Instrument, ordType: orderType,
+                side: orderSide, simTime: SimTime,
+                price: float = 0, amount: float = 0,
                 leverage: int = 1, action: Optional[orderAction] = None
                 ) -> None:
         self.uuid = uuid.uuid4()
+        if not isinstance(inst, Instrument):
+            raise TypeError(f"arg `inst` should have type `Instrument`, but have type {type(inst)}")
+        if not isinstance(ordType, orderType):
+            raise TypeError(f"arg `orderType` should have type `orderType`, but have type {type(orderType)}")
+        if not isinstance(side, orderSide):
+            raise TypeError(f"arg `side` should have type `orderSide`, but have type {type(side)}")
+        if not isinstance(simTime, SimTime):
+            raise TypeError(f"arg `simTime` should have type `SimTime`, but have type {type(simTime)}")
+        if not isinstance(price, float):
+            raise TypeError(f"arg `price` should have type `float`, but have type {type(price)}")
+        if not isinstance(amount, float):
+            raise TypeError(f"arg `amount` should have type `float`, but have type {type(amount)}")
+        if not isinstance(leverage, int):
+            raise TypeError(f"arg `leverage` should have type `int`, but have type {type(leverage)}")
+        if action is not None and not isinstance(action, orderAction):
+            raise TypeError(f"arg `action` should have type `Optional[orderAction]`, but have type {type(action)}")
         self.inst = inst
-        self.orderType = orderType
+        self.orderType = ordType
         self.side = side
         self.create_ts = int(simTime) # The timestamp when the order is created
         self.simTime = simTime # The simulation time

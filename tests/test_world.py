@@ -102,7 +102,7 @@ def metabacktest(file: Path) -> tuple:
                     orderType.MARKET,
                     orderSide(inst['side']),
                     env.simTime,
-                    inst['value'],
+                    amount=inst['value'],
                 ))
                 events.append(event)
                 break

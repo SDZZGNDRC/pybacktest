@@ -6,6 +6,7 @@
         "conts",
         "datadir",
         "DTYPES",
+        "filterwarnings",
         "getitem",
         "iloc",
         "indexprices",

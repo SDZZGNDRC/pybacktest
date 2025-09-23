@@ -2,7 +2,21 @@
 
 A backtest framework written in python, used for testing trading strategies.
 
-> NOTICE: When opening with `VSCode`, if you encounter `import` related errors, please configure the `python.analysis.extraPaths` and `python.autoComplete.extraPaths` settings in the `.vscode` folder.
+## Development
+
+由于`cbookcore`是使用`pybind11`导出的库，因此，需要运行下面的命令导出`存根文件`：
+```psh
+pybind11-stubgen cbookcore -o .
+
+# 从你的项目目录 D:\Project\pybacktest 运行
+copy-item -Path ".\cbookcore\*.pyi" -Destination "D:\Software\miniconda3\envs\CryptoSpider\Lib\site-packages\cbookcore\"
+```
+
+### 单元测试
+
+```bash
+pytest tests/
+```
 
 ## Features
 

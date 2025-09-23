@@ -2,6 +2,7 @@ import glob
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
+from copy import deepcopy
 import pandas as pd
 
 # from .bookcore import *
@@ -24,9 +25,9 @@ class Book:
             self.index_files.append(file)
         
         # Sort index_timePeriods and index_files together based on start time
-        self.index_timePeriods, self.index_files = zip(*sorted(zip(self.index_timePeriods, self.index_files)))
-        self.index_timePeriods = list(self.index_timePeriods)
-        self.index_files = list(self.index_files)
+        sorted_pairs = sorted(zip(self.index_timePeriods, self.index_files))
+        self.index_timePeriods = [pair[0] for pair in sorted_pairs]
+        self.index_files = [pair[1] for pair in sorted_pairs]
         
         self.current_index = -1
         # self._update_index()
@@ -70,7 +71,7 @@ class Book:
         return False
 
 
-    def update(self):
+    def update(self) -> None:
         # FIXME: Need to improve the performance!
         if self.current_ts == self.simTime:
             return
@@ -150,8 +151,6 @@ class Book:
         else:
             raise Exception(f'Invalid side: {side}')
 
-    def filled(self, depth: int) -> bool:
-        return self._core.filled(depth)
 
 
 class Books:

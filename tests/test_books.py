@@ -247,7 +247,7 @@ class TestBook:
         correct_asks.set(145.0, 47.0, 5)
         
         assert book.current_ts == 1687420840901
-        assert_and_debug_asks(book.asks, correct_asks)
+        assert book.asks == correct_asks
         
         correct_bids = Bids()
         correct_bids.set(90.0, 50.0, 1)

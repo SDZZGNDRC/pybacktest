@@ -6,7 +6,7 @@ import tempfile
 from typing import Dict, List
 import pandas as pd
 
-from pybacktest.instrument import Instrument, Pair
+from pybacktest.instrument import Instrument, Pair, InstType
 from pybacktest.history import HistLevel
 from pybacktest.order import Order, orderSide, orderType
 from pybacktest.environment import Environment
@@ -82,10 +82,25 @@ def metabacktest(file: Path) -> tuple:
         events = []
         for inst in insts:
             if inst['ts'] == env.simTime:
-                event = CreateEvent(int(env.simTime), 'OKX', Order(
+                # 创建Instrument对象
+                pair_parts = inst['pair'].split('-')
+                if len(pair_parts) != 2:
+                    raise ValueError(f"Invalid pair format: {inst['pair']}")
+                
+                instrument = Instrument(
+                    Pair(pair_parts[0], pair_parts[1]),
                     inst['pair'],
+                    InstType.SPOT,
+                    0,  # listTime
+                    9999999999999,  # expTime (一个很大的值，表示永不过期)
+                    1.0,  # contract_size
+                    0.0001  # tick_size
+                )
+                
+                event = CreateEvent(int(env.simTime), 'OKX', Order(
+                    instrument,
                     orderType.MARKET,
-                    inst['side'],
+                    orderSide(inst['side']),
                     env.simTime,
                     inst['value'],
                 ))

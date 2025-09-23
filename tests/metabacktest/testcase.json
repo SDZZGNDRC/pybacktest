@@ -919,7 +919,7 @@
     "insts": [
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154233000,
             "price": 0.004409000000000001,
             "value": 2948.17,
@@ -927,7 +927,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154244000,
             "price": 0.0037689702759062765,
             "value": 1062.04,
@@ -935,7 +935,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "SELL",
+            "side": "SELLSHORT",
             "ts": 1684154253000,
             "price": 0.0036242824547041597,
             "value": 2137.92,
@@ -943,7 +943,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154260000,
             "price": 0.003312833407554442,
             "value": 228.62,
@@ -951,7 +951,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154270000,
             "price": 0.003942468345348098,
             "value": 1488.53,
@@ -959,7 +959,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154278000,
             "price": 0.00393631977420776,
             "value": 3821.64,
@@ -967,7 +967,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154291000,
             "price": 0.004303684475668668,
             "value": 442.83,
@@ -975,7 +975,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154298000,
             "price": 0.0038095697995474877,
             "value": 1533.17,
@@ -983,7 +983,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "SELL",
+            "side": "SELLSHORT",
             "ts": 1684154308000,
             "price": 0.004516803287072071,
             "value": 2203.15,
@@ -991,7 +991,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154321000,
             "price": 0.004848762652655865,
             "value": 2387.98,
@@ -999,7 +999,7 @@
         },
         {
             "ordType": "MarketOrder",
-            "side": "BUY",
+            "side": "BUYLONG",
             "ts": 1684154332000,
             "price": 0.004845375916323224,
             "value": 3309.28,

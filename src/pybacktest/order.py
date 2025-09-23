@@ -58,7 +58,7 @@ class Order:
     def __init__(self,
                 inst: Instrument, ordType: orderType,
                 side: orderSide, simTime: SimTime,
-                price: float = 0, amount: float = 0,
+                price: float = 0.0, amount: float = 0.0,
                 leverage: int = 1, action: Optional[orderAction] = None
                 ) -> None:
         self.uuid = uuid.uuid4()
@@ -70,10 +70,16 @@ class Order:
             raise TypeError(f"arg `side` should have type `orderSide`, but have type {type(side)}")
         if not isinstance(simTime, SimTime):
             raise TypeError(f"arg `simTime` should have type `SimTime`, but have type {type(simTime)}")
-        if not isinstance(price, float):
-            raise TypeError(f"arg `price` should have type `float`, but have type {type(price)}")
-        if not isinstance(amount, float):
-            raise TypeError(f"arg `amount` should have type `float`, but have type {type(amount)}")
+        # 允许可以转换为float的类型
+        try:
+            price = float(price)
+        except (TypeError, ValueError):
+            raise TypeError(f"arg `price` should be convertible to `float`, but have type {type(price)}")
+        
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError):
+            raise TypeError(f"arg `amount` should be convertible to `float`, but have type {type(amount)}")
         if not isinstance(leverage, int):
             raise TypeError(f"arg `leverage` should have type `int`, but have type {type(leverage)}")
         if action is not None and not isinstance(action, orderAction):

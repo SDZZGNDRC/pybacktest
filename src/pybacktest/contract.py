@@ -2,7 +2,7 @@
 from enum import Enum
 import uuid
 from uuid import UUID
-from src.instrument import Instrument
+from .instrument import Instrument
 
 
 class ContRole(Enum):

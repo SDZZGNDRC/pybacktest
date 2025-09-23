@@ -2,11 +2,13 @@ import glob
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
+from copy import deepcopy
 import pandas as pd
 
-from pybacktest.src.bookcore import *
-from pybacktest.src.instrument import Instrument
-from pybacktest.src.simTime import SimTime
+# from .bookcore import *
+from cbookcore import BookCore, BookLevel, Asks, Bids
+from .instrument import Instrument
+from .simTime import SimTime
 
 class Book:
     def __init__(self, instId: str, simTime: SimTime, path: Path, max_interval: int = 2000, check_instId: bool = True) -> None:
@@ -15,14 +17,17 @@ class Book:
         self.max_interval = max_interval
         
         # initialize the index
-        self.index_files: List[str] = glob.glob(os.path.join(self.path, 'part-*-*-*.parquet'))
-        if len(self.index_files) == 0:
-            t = os.path.join(self.path, 'part-*-*-*.parquet')
-            raise Exception(f'No index files found at {t}')
         self.index_timePeriods: List[Tuple[int, int]] = []
-        for file in self.index_files:
+        self.index_files: List[str] = []
+        for file in glob.glob(os.path.join(self.path, 'part-*-*-*.parquet')):
             start, end = os.path.splitext(os.path.basename(file))[0].split('-')[2:]
             self.index_timePeriods.append((int(start), int(end)))
+            self.index_files.append(file)
+        
+        # Sort index_timePeriods and index_files together based on start time
+        sorted_pairs = sorted(zip(self.index_timePeriods, self.index_files))
+        self.index_timePeriods = [pair[0] for pair in sorted_pairs]
+        self.index_files = [pair[1] for pair in sorted_pairs]
         
         self.current_index = -1
         # self._update_index()
@@ -36,11 +41,29 @@ class Book:
 
 
     def _update_index(self) -> bool:
-        for i, (start, end) in enumerate(self.index_timePeriods):
+        left, right = 0, len(self.index_timePeriods) - 1
+        
+        while left <= right:
+            mid = (left + right) // 2
+            start, end = self.index_timePeriods[mid]
+            
             if start <= self.simTime <= end:
-                if self.current_index != i:
-                    self.current_index = i
+                if self.current_index != mid:
+                    self.current_index = mid
                     return True
+                return False
+            elif self.simTime < start:
+                right = mid - 1
+            else:
+                left = mid + 1
+        
+        # If we didn't find an exact match, check the nearest intervals
+        if left < len(self.index_timePeriods) and self.index_timePeriods[left][0] <= self.simTime:
+            self.current_index = left
+            return True
+        if right >= 0 and self.index_timePeriods[right][1] >= self.simTime:
+            self.current_index = right
+            return True
         
         if self.current_index == -1:
             raise Exception(f'Can not find a chunk files for the simTime {int(self.simTime)}')
@@ -48,7 +71,8 @@ class Book:
         return False
 
 
-    def update(self):
+    def update(self) -> None:
+        # FIXME: Need to improve the performance!
         if self.current_ts == self.simTime:
             return
         
@@ -90,6 +114,7 @@ class Book:
                 raise Exception(f'The time interval {time_interval} between two consecutive rows {(self.current_ts, row["timestamp"])} exceeds the maximum interval {self.max_interval}.')
             
             self._core.set(dict(row))
+            # self._core.set(row)
             if row['timestamp'] != self.current_ts:
                 self.current_ts = row['timestamp']
             self.chunked_index += 1
@@ -126,8 +151,6 @@ class Book:
         else:
             raise Exception(f'Invalid side: {side}')
 
-    def filled(self, depth: int) -> bool:
-        return self._core.filled(depth)
 
 
 class Books:

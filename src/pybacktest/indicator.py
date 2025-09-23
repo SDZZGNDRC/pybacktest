@@ -1,5 +1,5 @@
 
-from src.simTime import SimTime
+from .simTime import SimTime
 
 
 class Indicator:

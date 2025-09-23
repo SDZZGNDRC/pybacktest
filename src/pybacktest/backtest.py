@@ -1,6 +1,6 @@
 from typing import Callable, Dict, List, Optional
-from src.strategy import Strategy
-from src.environment import Environment
+from .strategy import Strategy
+from .environment import Environment
 
 class Backtest:
     def __init__(self,

@@ -6,6 +6,7 @@
         "conts",
         "datadir",
         "DTYPES",
+        "filterwarnings",
         "getitem",
         "iloc",
         "indexprices",
@@ -18,21 +19,18 @@
         "markprice",
         "markprices",
         "metabacktest",
+        "numpy",
         "PAVG",
+        "pyarrow",
         "pybacktest",
         "SELLSHORT",
+        "setuptools",
         "TWEEK",
         "uprofit"
     ],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.typeCheckingMode": "basic",
     "peacock.color": "#42b883",
-    "python.analysis.extraPaths": [
-        "C:\\Projects"
-    ],
-    "python.autoComplete.extraPaths": [
-        "C:\\Projects"
-    ],
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#65c89b",
         "activityBar.background": "#65c89b",

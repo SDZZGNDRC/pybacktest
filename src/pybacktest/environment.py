@@ -1,8 +1,8 @@
 
 from pathlib import Path
 from typing import Dict
-from src.exchanges import Exchange
-from src.simTime import SimTime
+from .exchanges import Exchange
+from .simTime import SimTime
 
 
 class Environment:

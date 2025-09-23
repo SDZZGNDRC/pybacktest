@@ -2,11 +2,11 @@ import os
 from pathlib import Path
 from typing import Literal, Union
 
-from src.IdxPrice import IdxPrices
-from src.books import Books
-from src.markprices import MarkPrices
-from src.mabidask import MABidAsks
-from src.simTime import SimTime
+from .idxPrice import IdxPrices
+from .books import Books
+from .markprices import MarkPrices
+from .mabidask import MABidAsks
+from .simTime import SimTime
 
 class MarketData:
     def __init__(self, simTime: SimTime, path: Path, max_interval: int = 2000):

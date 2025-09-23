@@ -1,10 +1,7 @@
-import sys
-
-sys.path.insert(0, sys.path[0]+"/../")
 import pytest
-from src.order import Order, orderType, orderSide, orderStatus
-from src.instrument import Instrument, InstType, Pair
-from src.simTime import SimTime
+from pybacktest.order import Order, orderType, orderSide, orderStatus
+from pybacktest.instrument import Instrument, InstType, Pair
+from pybacktest.simTime import SimTime
 
 def test_order_init():
     simTime = SimTime(0, 100)

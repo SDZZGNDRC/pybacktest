@@ -1,334 +1,374 @@
-# PyBacktest
+# PyBacktest - Python量化回测框架
 
-A backtest framework written in python, used for testing trading strategies.
+一个基于Python开发的量化交易策略回测框架，支持订单簿级别的市场模拟。
 
-> NOTICE: When opening with `VSCode`, if you encounter `import` related errors, please configure the `python.analysis.extraPaths` and `python.autoComplete.extraPaths` settings in the `.vscode` folder.
+## 项目简介
 
-## Features
+PyBacktest是一个专业的量化交易策略回测框架，具有以下核心特性：
 
-* **Order Books**: This backtest framework uses order books to simulate the market.  
-* `Slippage/Market impact`
-* `margin/leverage`: Support margin trading and leverage trading.
-* Support simulating the **Network Delay**: It takes time to receive the market data and send the orders, and the time is different for different exchanges.
+* **订单簿模拟**：基于真实的订单簿数据进行市场模拟，支持滑点和市场冲击
+* **保证金交易**：支持杠杆交易和保证金管理
+* **网络延迟模拟**：可以模拟不同交易所的网络延迟
+* **多种交易品种**：支持现货和期货交易
+* **高性能**：采用惰性加载和按需更新机制优化性能
 
-## Structure
+## 安装
 
-### World
+### 从源码安装
 
-The world is consisted of environments and strategies.
+```bash
+# 克隆项目
+git clone https://github.com/your-username/pybacktest.git
+cd pybacktest
 
-**properties**:
-
-* `events: List[Event]`: The events that will be executed.
-
-**methods**:
-
-* `run(backtest: Backtest) -> History`: Run the backtest.
-  * Initialize the Environment
-* `eval()`: Evaluate the environments by calling registered functions.
-
-### Environment
-
-The environments will be exposed to the strategies, and the strategies will use the environments to make decisions.
-
-#### Info
-
-The environments is consisted of a set of information, which is called `Info`.
-
-### SimTime
-
-The time in the simulation.
-
-properties:
-
-* `__start: int`: The start time of the simulation.
-* `__end: int`: The end time of the simulation.
-* `__ts: int`: The timestamp of the simulation time.
-
-methods:
-
-* `__init__(self, start: int, end: int) -> None`: Initialize the simulation time.
-* `update(ts: int) -> None`: Update the simulation time to `ts`.
-* `__str__() -> str`: Return the string representation of the simulation time in milliseconds.
-* `__int__() -> int`: Return the integer representation of the simulation time in milliseconds.
-* `__float__() -> float`: Return the float representation of the simulation time in milliseconds.
-* `set(ts: int) -> None`: Set the simulation time to `ts`.
-
-### Exchange
-
-The exchange that the strategy is trading on.
-
-**properties**:
-
-* MarketData
-
-* Orders  
-
-  The orders that the strategy has placed.  
-
-* Balance
-
-  Current balance of the account.
-
-**methods**:
-
-* `__init__(self, name: str, simTime: SimTime, network_delay: bool = false) -> None`: Initialize the exchange.
-
-> Note: The `network_delay` mechanism is unavailable currently.
-
-* `eval() -> None`: Try to execute the orders that the strategy has placed; update the market data and the balance.  The order entered earlier should be executed first.  
-
-### Indicators(Info)
-
-A variety of indicators that can be used by the strategies.
-> To better performance, the indicators will be `calculated lazily`.
-
-```python
-# Example of usage.
-idc = Indicators()
-idc['AveragePrice']['BTC-USDT']['1m'] # The average price of BTC-USDT in the last 1 minute
+# 安装依赖
+pip install -e .
 ```
 
-* `MACD`: Moving Average Convergence Divergence
-* `Feedback indicators`: The thought behind this kind of indicator is that the strategy will be able to adjust itself according to its recently performance.
-  * `HitRate`: The hit rate of the strategy.
-  * `Risk/Reward Ratio`: The risk/reward ratio of the strategy.
-* `RSI`: Relative Strength Index
-* `Volume`: The number of stocks or contracts traded over a certain period of time.
-* `Stochastic oscillator`
-* `Williams %R`
-* `Ulcer Indicator`
-* 订单簿的衍生指标
-  * `Order Book Imbalance`: It measures the difference between the total buy orders and sell orders at a specific price level.
-  * 变换频率最快的价格档位
-  * 买卖双方的订单变化频率
-* Indicators about which price-level most trading activities have taken place.
+### 依赖要求
 
-### Balance
+* Python >= 3.8
+* pandas >= 2.1.1
+* numpy >= 1.26.1
+* matplotlib >= 3.8.0
+* pyarrow >= 13.0.0
 
-Current balance of the account.  
+## 快速开始
+
+### 基本使用示例
 
 ```python
-# Example of usage.
-balance = Balance()
-balance['USDT'] # The amount of USDT
-balance.in_total(quote_Ccy='USDT') # The total amount of USDT
+from pybacktest.world import World
+from pybacktest.backtest import Backtest
+from pybacktest.strategy import CustomStrategy
+from pybacktest.history import HistLevel
+from pybacktest.event import CreateEvent
+from pybacktest.order import Order, orderType, orderSide
+from pybacktest.instrument import Instrument, Pair, InstType
+from pybacktest.environment import Environment
+
+# 1. 创建策略
+def simple_strategy(env: Environment):
+    """简单的买入持有策略"""
+    events = []
+    
+    # 在特定时间点创建订单
+    if env.simTime == 1689070299902:
+        # 创建交易品种
+        inst = Instrument(
+            Pair('BTC', 'USDT'), 
+            'BTC-USDT', 
+            InstType.SPOT,
+            0,  # 上市时间
+            9999999999999,  # 过期时间
+            1.0,  # 合约大小
+            0.01  # 最小价格变动
+        )
+        
+        # 创建市价买单
+        order = Order(
+            inst,
+            orderType.MARKET,
+            orderSide.BUYLONG,
+            env.simTime,
+            amount=1.0  # 交易数量
+        )
+        
+        # 创建订单事件
+        event = CreateEvent(int(env.simTime), 'OKX', order)
+        events.append(event)
+    
+    return events
+
+# 2. 配置回测
+strategy = CustomStrategy('simple_strategy', ['BTC-USDT'], simple_strategy)
+
+backtest = Backtest(
+    strategy=strategy,
+    start=1689070299902,  # 开始时间戳
+    end=1689070343902,    # 结束时间戳
+    hist_level=HistLevel.DEBUG,  # 历史记录级别
+    exchanges=['OKX'],    # 交易所列表
+    eval_step=1000,       # 评估间隔(毫秒)
+    initial_balance={'OKX': {'USDT': 10000}}  # 初始资金
+)
+
+# 3. 运行回测
+world = World('./data/path')  # 数据文件路径
+history = world.run(backtest)
+
+# 4. 保存结果
+history.save('./backtest_results.json')
 ```
 
-### Contracts
-
-All the contracts that the strategy is trading on.
+### 自定义策略开发
 
 ```python
-# Example of usage.
-contracts = Contracts()
-contracts['BTC-USDT'] # The contract of BTC-USDT
-contracts.in_total() # The total value of all the contracts
+from pybacktest.strategy import Strategy
+from pybacktest.event import Event
+from pybacktest.environment import Environment
+
+class MyCustomStrategy(Strategy):
+    """自定义策略示例"""
+    
+    def __init__(self, name: str, pairs: list):
+        super().__init__(name, pairs, indicators=[], stateful=False)
+        
+    def eval(self, env: Environment) -> list[Event]:
+        """策略评估逻辑"""
+        events = []
+        
+        # 获取市场数据
+        market_data = env['market_data']
+        books = market_data['books']
+        
+        # 简单的均值回归策略
+        btc_book = books['BTC-USDT']
+        best_bid = btc_book['bids'][0].price
+        best_ask = btc_book['asks'][0].price
+        mid_price = (best_bid + best_ask) / 2
+        
+        # 策略逻辑
+        if mid_price < best_bid * 0.99:  # 价格低于买一价1%
+            # 创建买入订单
+            # ... 订单创建逻辑
+            pass
+        elif mid_price > best_ask * 1.01:  # 价格高于卖一价1%
+            # 创建卖出订单
+            # ... 订单创建逻辑
+            pass
+            
+        return events
 ```
 
-### Contract
+## 核心组件
 
-The contract that the strategy is trading on.
+### World（世界）
 
-**properties**:
-
-* `pair: str`: The pair of the contract.
-* `start: int`: The start time of the contract.
-* `end: int`: The end time of the contract.
-* `entry_ts: int`: The timestamp of the entry time.
-* `direction: str`: The direction of the contract, `Long` or `Short`.
-* `leverage: int`: The leverage of the contract.
-* `margin: float`: The margin of the contract.
-* `exit_ts: int`: The timestamp of the exit time.
-* `status: str`: The status of the contract, `Pending`, `Opened` or `Closed`.
-
-### Strategy
-
-We should consider to separate the strategy into `signal generator` and `risk manager`. The `signal generator` will generate the signals which indicate the direction of the market, and the `risk manager` will decide the amount of the orders.
-
-methods:
-
-* `eval(env: Environment) -> List[Event]`: Evaluate the environment and return the action that the strategy will take.
-
-#### Metadata
-
-Describe the strategy itself.
-
-* `name`: The name of the strategy.
-* `stateful: bool`: Whether the strategy is stateful or not.
-* `pairs: List[str]`: The pairs that the strategy will trade.
-* `indicators: List[str]`: The indicators that the strategy will use.
-
-#### Alpha
-
-Tha alpha generate the signals which indicate the direction of the market.
-
-#### Risk Management
-
-The risk management will decide the amount of the orders.
-
-### Event
-
-Represent the event that the strategy will take.
-
-### CreateEvent(Event)
-
-Create an order.
-
-properties:
-
-* `exchange: str`: The exchange that the order will be placed on.
-* `order: Order`: The order that will be created.
-
-### CancelOrder(Event)
-
-Cancel an order.
-
-properties:
-
-* `uuid: str`: The unique identifier of the order that will be canceled.
-
-### History
-
-The history of the backtest.
-
-properties:
-
-* `hist_level: str`: The level of the history.
-
-methods:
-
-* `snapshot(env: Environment) -> None`: Record the current state of the environment.
-* `save(path: str) -> None`: Save the history to the path.
-
-### MarketData
-
-To reduce the memory usage, load the market data `lazily`.  
-The data are originally stored in multiple parquet files.  
-
-**properties**:
-
-* `books`: The order books of the market.
-* ...
-
-**methods**:
-
-* `__init__(self, simTime: SimTime, path: str) -> None`: Initialize the market data.
-
-**Usage**:
+回测的核心控制器，管理整个模拟过程。
 
 ```python
-# Examples of usage.
-md = MarketData()
-md['books']['BTC-USDT']['asks'][0] # The best ask price of BTC-USDT
+world = World(data_path, max_interval=2000)
+history = world.run(backtest)
 ```
 
-### BookLevel
+### Backtest（回测配置）
 
-The item of the order book.
-
-**properties**:
-
-* `price: float`: The price of the order.
-* `amount: float`: The amount of the order.
-* `count: int`: The number of orders. (Maybe not useful)
-
-### Book
-
-The order book structure of the specific pair.
-
-**properties**:
-
-* `asks: Asks`: The asks of the order book.
-* `bids: Bids`: The bids of the order book.
-
-**methods**:
-
-* `__init__(self, pair: str, simTime: SimTime, path: str, max_interval: int = 3000) -> None`: Initialize the order books.
-* `update() -> None`: Update the order books to current simTime. To enhance the performance, the order books will be `updated only when necessary` instead of updating every time.
-* `__getitem__(self, side: str) -> Union[Asks, Bids]`: Return the asks or bids of the order book.
-
-**Usage**:
+定义回测的参数和条件。
 
 ```python
-# Examples of usage.
-book = Book()
-book['asks'][0] # The best ask price
+backtest = Backtest(
+    strategy=strategy,
+    start=start_ts,
+    end=end_ts,
+    hist_level=HistLevel.DEBUG,
+    exchanges=['OKX'],
+    eval_step=1000
+)
 ```
 
-### Books
+### Strategy（策略）
 
-The order books structure contains multiple books of different pairs.
+交易策略的基类，支持自定义策略实现。
 
-**properties**:
+```python
+class MyStrategy(Strategy):
+    def eval(self, env: Environment) -> list[Event]:
+        # 策略逻辑
+        return events
+```
 
-* `__books: Dict[str, Book]`: The order books.
+### Environment（环境）
 
-**methods**:
+策略运行的环境，包含市场数据、交易所等信息。
 
-* `__init__(self, simTime: SimTime, path: str) -> None`: Initialize the order books.
-* `update() -> None`: Update the order books to current simTime. (`Update only when necessary`)
-* `__getitem__(self, pair: str) -> Book`: Return the order book of the specific pair. Use `lazy loading` to reduce the memory usage.
+```python
+env = Environment(data_path, simTime, max_interval=2000)
+```
 
-### Order  
+### Exchange（交易所）
 
-The orders that the strategy has placed.  
-**properties**:
+模拟交易所行为，包括订单执行、余额管理等。
 
-* `uuid: uuid.UUID`: The unique identifier of the order.
-* `pair: str`: The pair that the order will trade.
-* `orderType: str`: The type of the order, `Market` or `Limit`.
-* `side: str`: The side of the order, `Buy` or `Sell`.
-* `ts: int`: The timestamp of the order.
-* `price: float`: The price of the order. (Only make sense for `Limit` order)
-* `amount: float`: The value of the order.
-* `status: str`: The status of the order, `Pending`, `Filled` or `Canceled`.
-* `details: List[TransDetail]`: The detail of transaction.
+```python
+exchange = Exchange(data_path, simTime, initial_balance={'USDT': 1000})
+```
 
-**methods**:
+### Order（订单）
 
-* `ATP() -> float`: Return the average transaction price of the order.
-* `fee() -> float`: Return the fee of the order.
-* `leftAmount() -> float`: Return the amount that has not been executed.
-* `exe(price: float, amount: float, fee: float) -> None`: Execute the order.
+交易订单的表示。
 
-### TransDetail
+```python
+order = Order(
+    instrument=inst,
+    order_type=orderType.MARKET,
+    side=orderSide.BUYLONG,
+    timestamp=ts,
+    amount=1.0,
+    leverage=10  # 杠杆倍数
+)
+```
 
-The detail of transaction.
+## 数据格式
 
-properties:
+### 订单簿数据
 
-* `pair: str`: The pair that the transaction has traded.
-* `side: str`: The side of the transaction, `Buy` or `Sell`.
-* `ts: int`: The timestamp of the transaction.
-* `price: float`: The price of the transaction.
-* `amount: float`: The amount of the transaction.
-* `fee: float`: The fee of the transaction.
+PyBacktest使用Parquet格式存储订单簿数据，目录结构如下：
 
-### Backtest
+```
+data/
+├── books/
+│   └── BTC-USDT/
+│       └── part-0-{start_ts}-{end_ts}.parquet
+```
 
-Describe a backtest.
+数据列包括：
+- `instId`: 交易品种ID
+- `price`: 价格
+- `size`: 数量
+- `side`: 买卖方向 (bid/ask)
+- `timestamp`: 时间戳
+- `action`: 动作类型 (snapshot/update)
 
-**properties**:
+## 高级功能
 
-* `strategy: Strategy`: The strategy that will be used in the backtest.
-* `start: int`: The start time of the backtest.
-* `end: int`: The end time of the backtest.
-* `eval_step: int = 1000`: The time interval between two evaluations.
-* `stop_condition: Callable`: The condition that will stop the backtest.
-* `hist_level: str`: The level of the history that will be recorded.
-* `exchanges: List[str]`: The exchanges that the strategy will trade on.
+### 杠杆交易
 
-## Test
+```python
+# 10倍杠杆开多仓
+order = Order(
+    instrument=inst,
+    order_type=orderType.MARKET,
+    side=orderSide.BUYLONG,
+    timestamp=ts,
+    amount=1.0,
+    leverage=10,
+    action=orderAction.OPEN
+)
+```
 
-To complete.
+### 指标计算
 
-## Examples of strategies
+框架支持多种技术指标的计算：
 
-### Mean Reversion
+```python
+# 获取移动平均价格
+avg_price = env['indicators']['AveragePrice']['BTC-USDT']['1m']
 
-### Momentum
+# MACD指标
+macd = env['indicators']['MACD']['BTC-USDT']
 
-### MACD Crossover
+# RSI指标  
+rsi = env['indicators']['RSI']['BTC-USDT']
+```
 
-### Grid Trading
+### 历史记录
+
+支持不同级别的历史记录：
+
+```python
+from pybacktest.history import HistLevel
+
+# 调试级别 - 记录所有细节
+backtest = Backtest(hist_level=HistLevel.DEBUG)
+
+# 标准级别 - 记录关键信息
+backtest = Backtest(hist_level=HistLevel.STANDARD)
+
+# 最小级别 - 只记录最终结果
+backtest = Backtest(hist_level=HistLevel.MINIMAL)
+```
+
+## 开发指南
+
+### 运行测试
+
+```bash
+# 运行所有测试
+pytest tests/
+
+# 运行特定测试
+pytest tests/test_Exchanges.py
+```
+
+### 代码结构
+
+```
+src/pybacktest/
+├── backtest.py      # 回测配置
+├── world.py         # 世界模拟器
+├── strategy.py      # 策略基类
+├── environment.py   # 环境管理
+├── exchanges.py     # 交易所模拟
+├── order.py         # 订单管理
+├── positions.py     # 仓位管理
+├── instrument.py    # 交易品种
+├── event.py         # 事件系统
+├── history.py       # 历史记录
+├── simTime.py       # 模拟时间
+└── marketdata.py    # 市场数据
+```
+
+### 扩展框架
+
+您可以扩展框架以支持新的功能：
+
+1. **自定义指标**：继承`Indicator`类
+2. **新的订单类型**：扩展`Order`类
+3. **额外的数据源**：实现新的数据加载器
+
+## 示例策略
+
+### 均值回归策略
+
+基于价格偏离均值的策略，当价格偏离均值一定幅度时进行反向交易。
+
+### 动量策略
+
+跟随价格趋势，在价格上涨时买入，下跌时卖出。
+
+### MACD交叉策略
+
+基于MACD指标的金叉和死叉信号进行交易。
+
+### 网格交易策略
+
+在特定价格区间内设置多个买卖点位。
+
+## 性能优化
+
+* **惰性加载**：市场数据按需加载，减少内存占用
+* **按需更新**：订单簿只在需要时更新
+* **高效数据结构**：使用优化的数据结构和算法
+
+## 贡献指南
+
+欢迎贡献代码！请遵循以下步骤：
+
+1. Fork项目
+2. 创建功能分支
+3. 提交更改
+4. 推送到分支
+5. 创建Pull Request
+
+## 许可证
+
+本项目采用MIT许可证。详见LICENSE文件。
+
+## 支持
+
+如有问题或建议，请通过以下方式联系：
+- 创建Issue
+- 发送邮件至：sdzzgndrc@gmail.com
+
+## 更新日志
+
+### v1.1.0
+- 新增杠杆交易支持
+- 优化性能表现
+- 完善文档和示例
+
+### v1.0.0
+- 初始版本发布
+- 基础回测功能
+- 订单簿模拟支持

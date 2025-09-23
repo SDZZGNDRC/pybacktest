@@ -1,0 +1,31 @@
+[project]
+name = "pybacktest"
+version = "1.1.0"
+description = "A backtest package for quant"
+authors = [
+    {name = "SDZZGNDRC", email = "sdzzgndrc@gmail.com"},
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.8"
+
+dependencies = [
+    "matplotlib>=3.8.0",
+    "numpy>=1.26.1",
+    "pandas>=2.1.1",
+    "py7zr>=0.20.6",
+    "pyarrow>=13.0.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*", "tests.*"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:jupyter_client.connect",
+    "ignore::DeprecationWarning:jupyter_core.paths",
+]

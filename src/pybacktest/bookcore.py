@@ -1,6 +1,8 @@
 import bisect
-from copy import copy, deepcopy
-from typing import List, Union
+from copy import deepcopy
+from typing import List
+
+import pandas as pd
 
 class BookLevel:
     def __init__(self, price: float, amount: float, count: int):
@@ -84,44 +86,41 @@ class Asks:
     
     
     def set(self, price: float, amount: float, count: int) -> None:
+        # NOTICE: Have been refactored by Claude-3-5-sonnet-20240620 
         new_level = BookLevel(price, amount, count)
-        if amount == 0: # remove the level
-            if new_level in self._asks:
-                self._asks.remove(new_level)
+        
+        if amount == 0:  # Remove the level
+            idx = bisect.bisect_left(self._asks, new_level)
+            if idx < len(self._asks) and self._asks[idx] == new_level:
+                del self._asks[idx]
         else:
             idx = bisect.bisect_left(self._asks, new_level)
-            if 0 <= idx < len(self._asks):
-                if self._asks[idx] == new_level:  # update
-                    self._asks[idx] = new_level
-                else:                             # insert new book_level
+            if idx < len(self._asks) and self._asks[idx] == new_level:
+                self._asks[idx] = new_level  # Update existing level
+            else:
+                if idx < self.max_depth:  # Insert new level
                     self._asks.insert(idx, new_level)
-                    self._asks[:] = self._asks[:self.max_depth]
-            elif len(self._asks) < self.max_depth: # append new book_level
-                    self._asks.append(new_level)
+                    if len(self._asks) > self.max_depth:
+                        self._asks.pop()  # Remove last element if exceeding max_depth
 
-    def __getitem__(self, key) -> Union[BookLevel, List[BookLevel]]:
-        if isinstance(key, slice):
-            start = key.start if key.start is not None else 0
-            stop = key.stop if key.stop is not None else len(self._asks)
-            step = key.step if key.step is not None else 1
-            return [self._asks[i] for i in range(start, stop, step)]
-        elif isinstance(key, int):
+    def __getitem__(self, key) -> BookLevel | List[BookLevel]:
+        if isinstance(key, int):
+            return self._asks[key]
+        elif isinstance(key, slice):
             return self._asks[key]
         else:
-            raise TypeError("Invalid key type. Key must be an integer or a slice.")
+            raise TypeError(f"Invalid key type. Key must be an integer or slice, but got {type(key)}, {key}.")
     
     
     def __len__(self) -> int:
         return len(self._asks)
     
     def __eq__(self, other) -> bool:
-        if len(self._asks) != len(other):
+        # NOTICE: Have been refactored by Claude-3-5-sonnet-20240620
+        if not isinstance(other, Asks) or len(self._asks) != len(other._asks):
             return False
-        for i, level in enumerate(self._asks):
-            if not level.true_eq(other[i]):
-                return False
         
-        return True
+        return all(self_level.true_eq(other_level) for self_level, other_level in zip(self._asks, other._asks))
     
     def __iter__(self):
         return iter(self._asks)
@@ -145,32 +144,31 @@ class Bids:
     
     
     def set(self, price: float, amount: float, count: int) -> None:
+        # NOTICE: Have been refactored by Claude-3-5-sonnet-20240620 
         new_level = BookLevel(price, amount, count)
-        if amount == 0: # remove the level
-            if new_level in self._bids:
-                self._bids.remove(new_level)
-        else:    
-            idx = bisect.bisect_left(self._bids, -1*new_level.price, key=lambda x: -1*x.price)
-            if 0 <= idx < len(self._bids):
-                if self._bids[idx] == new_level:  # update
-                    self._bids[idx] = new_level
-                else:                             # insert new book_level
+        
+        if amount == 0:  # Remove the level
+            idx = bisect.bisect_left(self._bids, -price, key=lambda x: -x.price)
+            if idx < len(self._bids) and self._bids[idx] == new_level:
+                del self._bids[idx]
+        else:
+            idx = bisect.bisect_left(self._bids, -price, key=lambda x: -x.price)
+            if idx < len(self._bids) and self._bids[idx] == new_level:
+                self._bids[idx] = new_level  # Update existing level
+            else:
+                if idx < self.max_depth:  # Insert new level
                     self._bids.insert(idx, new_level)
-                    self._bids[:] = self._bids[:self.max_depth]
-            elif len(self._bids) < self.max_depth: # append new book_level
-                    self._bids.append(new_level)
+                    if len(self._bids) > self.max_depth:
+                        self._bids.pop()  # Remove last element if exceeding max_depth
 
 
-    def __getitem__(self, key) -> Union[BookLevel, List[BookLevel]]:
-        if isinstance(key, slice):
-            start = key.start if key.start is not None else 0
-            stop = key.stop if key.stop is not None else len(self._bids)
-            step = key.step if key.step is not None else 1
-            return [self._bids[i] for i in range(start, stop, step)]
-        elif isinstance(key, int):
+    def __getitem__(self, key) -> BookLevel | List[BookLevel]:
+        if isinstance(key, int):
+            return self._bids[key]
+        elif isinstance(key, slice):
             return self._bids[key]
         else:
-            raise TypeError("Invalid key type. Key must be an integer or a slice.")
+            raise TypeError(f"Invalid key type. Key must be an integer or slice, but got {type(key)}, {key}.")
     
     
     def __len__(self) -> int:
@@ -178,11 +176,11 @@ class Bids:
     
     
     def __eq__(self, other) -> bool:
-        for i, level in enumerate(self._bids):
-            if not level.true_eq(other[i]):
-                return False
+        # NOTICE: Have been refactored by Claude-3-5-sonnet-20240620
+        if not isinstance(other, Bids) or len(self._bids) != len(other._bids):
+            return False
         
-        return True
+        return all(self_level.true_eq(other_level) for self_level, other_level in zip(self._bids, other._bids))
 
 
     def __iter__(self):
@@ -208,8 +206,8 @@ class BookCore:
         self._bids: Bids = Bids()
     
     
-    def set(self, row: dict) -> None:
-        if self.check_instId and 'instId' in row and self.instId != row['instId']:
+    def set(self, row) -> None:
+        if self.check_instId and 'instId' in row and (self.instId != row['instId'] and not self.instId == row['instId'] + '-400'):
             row_instId = row['instId']
             raise Exception(f'set {row_instId} row with {self.instId}')
         if row['side'] == 'ask':
@@ -218,6 +216,22 @@ class BookCore:
             self._bids.set(row['price'], row['size'], row['numOrders'])
         else:
             raise Exception(f'Invalid side: {row["side"]}')
+
+    def set_datapoint(self, dp) -> None:
+        if self.check_instId and (self.instId != dp['arg']['instId']):
+            raise Exception(f"bookcore's instId {self.instId} is not equal to dp's instId {dp['arg']['instId']}")
+        for bl in dp['data']['asks']:
+            self._asks.set(float(bl[0]), float(bl[1]), int(bl[3]))
+        for bl in dp['data']['bids']:
+            self._bids.set(float(bl[0]), float(bl[1]), int(bl[3]))
+
+    def set_ori_dp(self, dp: pd.Series) -> None:
+        if self.check_instId and (self.instId != dp.arg['instId']):
+            raise Exception(f"bookcore's instId {self.instId} is not equal to dp's instId {dp.arg['instId']}")
+        for bl in dp.data['asks']:
+            self._asks.set(float(bl[0]), float(bl[1]), int(bl[3]))
+        for bl in dp.data['bids']:
+            self._bids.set(float(bl[0]), float(bl[1]), int(bl[3]))
 
     @property
     def asks(self) -> Asks:

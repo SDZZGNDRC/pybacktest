@@ -122,7 +122,8 @@ class Exchange:
                 )
                 self.__execute(liquidate_order)
                 logger.debug(f'AOP: {pos.AOP}')
-                logger.debug(f'ACP: {pos.ACP}')
+                if pos.STATUS == PosStatus.CLOSE:
+                    logger.debug(f'ACP: {pos.ACP}')
                 logger.debug(f'ask: {pos._mkPx._asks[0].price}')    # type: ignore
                 logger.debug(f'bid: {pos._mkPx._bids[0].price}')    # type: ignore
 

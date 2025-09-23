@@ -26,8 +26,6 @@ class World:
         eval_step = backtest.eval_step
         
         while True:
-            history.snapshot(self.env)
-            
             if backtest.stop_condition != None and backtest.stop_condition(self.env):
                 break
             
@@ -37,11 +35,14 @@ class World:
             
             self.events.extend(strategy.eval(self.env))
             
-            for event in self.events:
+            # Iterate over a copy of the list, as the list is modified during iteration
+            for event in self.events[:]:
                 if event.execute(self.env):
                     self.events.remove(event)
             
             self.env.eval()
+            
+            history.snapshot(self.env)
             
             self.simTime.add(eval_step)
         
